@@ -1,0 +1,19 @@
+base:
+  crop_shape: [640, 640]
+  pretrained: False
+  in_channels: [256, 512, 1024, 20248]
+  inner_channels: 256
+  k: 50
+  adaptive: True
+train_load:
+  train_img_dir: 'dataset/CTW1500/train/img'
+  train_label_dir: 'dataset/CTW1500/train/gt'
+model:
+  function: src.model.det_model,DBNet
+  backbone: src.model.backbone,resnet50
+  head: src.model.head,DBHead
+  segout: src.model.segout,SegDetector
+loss:
+  function: src.model.loss,DBLoss
+  l1_scale: 1
+  bce_scale: 10

@@ -17,3 +17,10 @@ loss:
   function: src.model.loss,DBLoss
   l1_scale: 1
   bce_scale: 10
+possprocess:
+  thresh: 0.3
+  box_thresh: 0.5
+  max_candidates: 1000
+  is_poly: False
+  unclip_ratio: 1.5
+

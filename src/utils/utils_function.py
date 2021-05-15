@@ -45,3 +45,29 @@ def sed_seed(seed):
 def create_dir(path):
     if not os.path.exists(path):
         Path(path).mkdir(parents=True, exist_ok=True)
+
+
+def merge_config(config, args):
+    for key_1 in config.keys():
+        if isinstance(key_1, dict):
+            for key_2 in config[key_1].keys():
+                if key_2 in dir(args):
+                    config[key_1, key_2] = getattr(args, key_2)
+    return config
+
+
+class AverageMeter:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.sum = 0
+        self.count = 0
+        self.avg = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val*n
+        self.count += n
+        self.avg = self.sum / self.count

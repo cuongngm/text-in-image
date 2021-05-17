@@ -47,6 +47,32 @@ def create_dir(path):
         Path(path).mkdir(parents=True, exist_ok=True)
 
 
+def create_loss_bin(algorithm='DBnet'):
+    bin_dict = {}
+    if algorithm == 'DBnet':
+        keys = ['loss_total', 'loss_l1', 'loss_bce', 'loss_thresh']
+    for key in keys:
+        bin_dict[key] = LossAccumulator()
+    return bin_dict
+
+
+class LossAccumulator:
+    def __init__(self):
+        super().__init__()
+        self.loss_items = []
+
+    def loss_add(self, loss):
+        self.loss_items.append(loss)
+
+    def loss_sum(self):
+        return sum(self.loss_items)
+
+    def loss_avg(self):
+        return sum(self.loss_items) / len(self.loss_items)
+
+    def loss_clear(self):
+        self.loss_items = []
+
 def merge_config(config, args):
     for key_1 in config.keys():
         if isinstance(key_1, dict):

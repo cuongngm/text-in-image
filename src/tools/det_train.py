@@ -1,12 +1,11 @@
 import cv2
 import os
 import yaml
-import tqdm
 import argparse
 import torch
 import numpy as np
 from torch.utils.data import DataLoader
-from src.utils.utils_function import create_dir, create_module, create_loss_bin
+from src.utils.utils_function import create_dir, create_module, create_loss_bin, save_checkpoint
 from src.utils.logger import Logger
 from src.utils.metrics import runningScore
 from src.utils.cal_iou_acc import cal_DB
@@ -63,7 +62,38 @@ def train_val_program(args):
         model.train()
         optimizer_decay(config, optimizer, epoch)
         loss_write = model_train(train_loader, model, optimizer, criterion, loss_bin, args, config, epoch)
-    return loss_write
+        if epoch == config['base']['start_val']:
+            create_dir(os.path.join(checkpoint, 'val'))
+            create_dir(os.path.join(checkpoint, 'val', 'res_img'))
+            create_dir(os.path.join(checkpoint, 'val', 'res_txt'))
+            model.eval()
+            recall, precision, hmean = model_eval(val_dataset, val_loader, model, img_process, checkpoint, config)
+            print('recall:{:.4f} \tprecision:{:.4f} \t hmean:{:.4f}'.format(recall, precision, hmean))
+            if hmean > best_hmean:
+                save_checkpoint({
+                    'epoch': epoch + 1,
+                    'state_dict': model.state_dict(),
+                    'lr': config['optimizer']['base_lr'],
+                    'optimizer': optimizer.state_dict(),
+                    'hmean': hmean,
+                    'precision': precision,
+                    'recall': recall
+                }, checkpoint=checkpoint, filename=config['base']['algorithm'] + '_best.pth')
+                best_hmean = hmean
+                best_precision = precision
+                best_recall = recall
+        for key in loss_bin.keys():
+            loss_bin[key].loss_clear()
+        if epoch % config['base']['save_epoch'] == 0:
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'state_dict': model.state_dict(),
+                'lr': config['optimizer']['base_lr'],
+                'optimizer': optimizer.state_dict(),
+                'hmean': 0,
+                'precision': 0,
+                'recall': 0,
+            }, checkpoint=checkpoint, filename=config['base']['algorithm'] + '_best.pth')
 
 
 def model_train(train_loader, model, optimizer, criterion, loss_bin, args, config, epoch):

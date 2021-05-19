@@ -6,6 +6,7 @@ base:
   inner_channels: 256
   k: 50
   n_epoch: 600
+  start_val: 200
   show_step: 100
   adaptive: True
   checkpoint: 'checkpoint/model_best.pth'

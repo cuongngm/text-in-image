@@ -34,6 +34,21 @@ def save_checkpoint(state, checkpoint='checkpoint', filename='model_best.pth'):
     torch.save(state, model_path)
 
 
+def load_model(model, model_path):
+    device = torch.device('cuda:0') if torch.cuda.is_available() else 'cpu'
+    model_dict = torch.load(model_path, map_location=device)
+    if 'state_dict' in model_dict.keys():
+        model_dict = model_dict['state_dict']
+    try:
+        model.load_state_dict(model_dict)
+    except:
+        state = model.state_dict()
+        for key in state.keys():
+            state[key] = model_dict['module.' + key]
+        model.load_state_dict(state)
+    return model
+
+
 def sed_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -47,10 +62,9 @@ def create_dir(path):
         Path(path).mkdir(parents=True, exist_ok=True)
 
 
-def create_loss_bin(algorithm='DBnet'):
+def create_loss_bin():
     bin_dict = {}
-    if algorithm == 'DBnet':
-        keys = ['loss_total', 'loss_l1', 'loss_bce', 'loss_thresh']
+    keys = ['loss_total', 'loss_l1', 'loss_bce', 'loss_thresh']
     for key in keys:
         bin_dict[key] = LossAccumulator()
     return bin_dict
@@ -72,6 +86,7 @@ class LossAccumulator:
 
     def loss_clear(self):
         self.loss_items = []
+
 
 def merge_config(config, args):
     for key_1 in config.keys():

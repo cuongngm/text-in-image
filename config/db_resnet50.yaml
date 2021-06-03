@@ -2,14 +2,14 @@ base:
   althgorithm: DBnet
   crop_shape: [640, 640]
   pretrained: False
-  in_channels: [256, 512, 1024, 20248]
+  in_channels: [256, 512, 1024, 2048]
   inner_channels: 256
   k: 50
   n_epoch: 600
   start_val: 200
   show_step: 100
   adaptive: True
-  checkpoint: 'checkpoint/model_best.pth'
+  checkpoint: 'checkpoint'
   gpu_id: 0,1
   restore: False
   restore_file: 'checkpoint/current.pth'
@@ -35,18 +35,19 @@ loss:
   l1_scale: 1
   bce_scale: 10
 optimizer:
-  function: src.model.optimizer,SGD
-  base_lr: 0.001
+  function: src.model.optimizer,SGDDecay
+  base_lr: 0.002
   weight_decay: 0.0005
   momentum: 0.95
 optimizer_decay:
-  function: src.model.optimizer,adjust_lr_poly
+  function: src.model.optimizer,adjust_learning_rate_poly
   factor: 0.9
-possprocess:
-  function: src.model.possprocess,DBPossprocess
+postprocess:
+  function: src.model.postprocess,DBPostProcess
   thresh: 0.3
   box_thresh: 0.5
   max_candidates: 1000
   is_poly: False
   unclip_ratio: 1.5
+  min_size: 3
 

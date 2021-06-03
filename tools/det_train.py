@@ -2,37 +2,48 @@ import cv2
 import os
 import yaml
 import argparse
-import torch
+import random
 import numpy as np
+import torch
 from torch.utils.data import DataLoader
+import sys
+sys.path.append('./')
 from src.utils.utils_function import create_dir, create_module, create_loss_bin, save_checkpoint
 from src.utils.logger import Logger
 from src.utils.metrics import runningScore
 from src.utils.cal_iou_acc import cal_DB
 from src.utils.cal_recall_pre_f1 import cal_recall_precison_f1
 
-
 GLOBAL_WORKER_ID = None
 GLOBAL_SEED = 123456
+
+torch.manual_seed(GLOBAL_SEED)
+torch.cuda.manual_seed(GLOBAL_SEED)
+torch.cuda.manual_seed_all(GLOBAL_SEED)
+np.random.seed(GLOBAL_SEED)
+random.seed(GLOBAL_SEED)
 
 
 def train_val_program(args):
     with open(args.config, 'r') as stream:
         config = yaml.safe_load(stream)
+    os.environ["CUDA_VISIBLE_DEVICES"] = config['base']['gpu_id']
+
     create_dir(config['base']['checkpoint'])
+    checkpoints_path = config['base']['checkpoint']
     model = create_module(config['model']['function'])(config)
     criterion = create_module(config['loss']['function'])(config)
     train_dataset = create_module(config['train_load']['function'])(config)
     val_dataset = create_module(config['val_load']['function'])(config)
-    optimizer = create_module(config['optimizer']['function'])(config, model)
-    optimizer_decay = create_module(config['optimizer_decay']['function'])(config)
+    optimizer = create_module(config['optimizer']['function'])(config, model.parameters())
+    optimizer_decay = create_module(config['optimizer_decay']['function'])
     img_process = create_module(config['postprocess']['function'])(config)
 
     train_loader = DataLoader(train_dataset, batch_size=config['train_load']['batch_size'], shuffle=True,
                               num_workers=config['train_load']['num_workers'])
-    val_loader = DataLoader(val_dataset, batch_size=config['val_load']['batch_size'], shuffle=True,
+    val_loader = DataLoader(val_dataset, batch_size=config['val_load']['batch_size'], shuffle=False,
                             num_workers=config['val_load']['num_workers'])
-    loss_bin = create_loss_bin(config['base']['algorithm'])
+    loss_bin = create_loss_bin()
     if torch.cuda.is_available():
         if len(config['base']['gpu_id'].split(',')) > 1:
             model = torch.nn.DataParallel(model).cuda()
@@ -53,7 +64,7 @@ def train_val_program(args):
         best_recall = checkpoint['recall']
         best_precision = checkpoint['precision']
         best_hmean = checkpoint['hmean']
-        log_write = Logger(os.path.join(checkpoint, 'log.txt'), title=config['base']['althgorithm'], resume=True)
+        log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['althgorithm'], resume=True)
     else:
         print('Training from scratch...')
     if args.start_epoch is not None:
@@ -61,13 +72,13 @@ def train_val_program(args):
     for epoch in range(start_epoch, config['base']['n_epoch']):
         model.train()
         optimizer_decay(config, optimizer, epoch)
-        loss_write = model_train(train_loader, model, optimizer, criterion, loss_bin, args, config, epoch)
-        if epoch == config['base']['start_val']:
-            create_dir(os.path.join(checkpoint, 'val'))
-            create_dir(os.path.join(checkpoint, 'val', 'res_img'))
-            create_dir(os.path.join(checkpoint, 'val', 'res_txt'))
+        loss_write = model_train(train_loader, model, criterion, optimizer, loss_bin, args, config, epoch)
+        if epoch >= config['base']['start_val']:
+            create_dir(os.path.join(checkpoints_path, 'val'))
+            create_dir(os.path.join(checkpoints_path, 'val', 'res_img'))
+            create_dir(os.path.join(checkpoints_path, 'val', 'res_txt'))
             model.eval()
-            recall, precision, hmean = model_eval(val_dataset, val_loader, model, img_process, checkpoint, config)
+            recall, precision, hmean = model_eval(val_dataset, val_loader, model, img_process, checkpoints_path, config)
             print('recall:{:.4f} \tprecision:{:.4f} \t hmean:{:.4f}'.format(recall, precision, hmean))
             if hmean > best_hmean:
                 save_checkpoint({
@@ -78,10 +89,12 @@ def train_val_program(args):
                     'hmean': hmean,
                     'precision': precision,
                     'recall': recall
-                }, checkpoint=checkpoint, filename=config['base']['algorithm'] + '_best.pth')
+                }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
                 best_hmean = hmean
                 best_precision = precision
                 best_recall = recall
+        loss_write.extend([recall, precision, hmean, best_recall, best_precision, best_hmean])
+        log_write.append(loss_write)
         for key in loss_bin.keys():
             loss_bin[key].loss_clear()
         if epoch % config['base']['save_epoch'] == 0:
@@ -93,10 +106,10 @@ def train_val_program(args):
                 'hmean': 0,
                 'precision': 0,
                 'recall': 0,
-            }, checkpoint=checkpoint, filename=config['base']['algorithm'] + '_best.pth')
+            }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
 
 
-def model_train(train_loader, model, optimizer, criterion, loss_bin, args, config, epoch):
+def model_train(train_loader, model, criterion, optimizer, loss_bin, args, config, epoch):
     running_metric_text = runningScore(2)
     for batch_idx, data in enumerate(train_loader):
         pre_batch, gt_batch = model(data)
@@ -141,7 +154,7 @@ def model_eval(test_dataset, test_loader, model, imgprocess, checkpoint, config)
         else:
             img_num = out.shape[0]
         for i in range(img_num):
-            scale = (ori_imgs.shape[1] * 1.0 / out.shape[3], ori_imgs.shape[0] * 1.0 / out.shape[2])
+            scale = (ori_imgs[i].shape[1] * 1.0 / out.shape[3], ori_imgs[i].shape[0] * 1.0 / out.shape[2])
             scales.append(scale)
         out = out.cpu().numpy()
         bbox_batch, score_batch = imgprocess(out, scales)
@@ -172,6 +185,5 @@ if __name__ == '__main__':
     parser.add_argument('--start_val', type=int, default=400)
     parser.add_argument('--base_lr', type=float, default=0.001)
     parser.add_argument('--gpd_id', type=int, default=0)
-    parser.add_argument()
     args = parser.parse_args()
     train_val_program(args)

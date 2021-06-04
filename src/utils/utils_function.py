@@ -81,7 +81,7 @@ class LossAccumulator:
     def loss_sum(self):
         return sum(self.loss_items)
 
-    def loss_avg(self):
+    def loss_mean(self):
         return sum(self.loss_items) / len(self.loss_items)
 
     def loss_clear(self):

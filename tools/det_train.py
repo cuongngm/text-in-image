@@ -32,7 +32,7 @@ def train_val_program(args):
     create_dir(config['base']['checkpoint'])
     checkpoints_path = config['base']['checkpoint']
     model = create_module(config['model']['function'])(config)
-    criterion = create_module(config['loss']['function'])(config)
+    criterion = create_module(config['model']['loss_function'])(config)
     train_dataset = create_module(config['train_load']['function'])(config)
     val_dataset = create_module(config['val_load']['function'])(config)
     optimizer = create_module(config['optimizer']['function'])(config, model.parameters())
@@ -109,7 +109,7 @@ def train_val_program(args):
             }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
 
 
-def model_train(train_loader, model, criterion, optimizer, loss_bin, args, config, epoch):
+def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch):
     running_metric_text = runningScore(2)
     for batch_idx, data in enumerate(train_loader):
         pre_batch, gt_batch = model(data)
@@ -122,7 +122,7 @@ def model_train(train_loader, model, criterion, optimizer, loss_bin, args, confi
                 loss_bin[key].loss_add(metrics[key].item())
             else:
                 loss_bin[key].loss_add(loss.item())
-        iou, acc = cal_DB(pre_batch['binary'], pre_batch['gt'], pre_batch['mask'], running_metric_text)
+        iou, acc = cal_DB(pre_batch['binary'], gt_batch['gt'], gt_batch['mask'], running_metric_text)
         if batch_idx % config['base']['show_step'] == 0:
             log = '({}/{}/{}/{}) | ' \
                 .format(epoch, config['base']['n_epoch'], batch_idx, len(train_loader))

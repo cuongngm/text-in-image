@@ -15,13 +15,13 @@ class DBNet(nn.Module):
 
     def forward(self, data):
         if self.training:
-            img, gt, gt_mask, thresh, thresh_mask = data
+            img, gt, gt_mask, thresh_map, thresh_mask = data
             if torch.cuda.is_available():
-                img, gt, gt_mask, thresh, thresh_mask = img.cuda(), gt.cuda(), gt_mask.cuda(),\
-                                                        thresh.cuda(), thresh_mask.cuda()
+                img, gt, gt_mask, thresh_map, thresh_mask = img.cuda(), gt.cuda(), gt_mask.cuda(),\
+                                                        thresh_map.cuda(), thresh_mask.cuda()
             gt_batch = dict(gt=gt)  # = gt_batch['gt'] = gt
-            gt_batch['gt_mask'] = gt_mask
-            gt_batch['thresh'] = thresh
+            gt_batch['mask'] = gt_mask
+            gt_batch['thresh_map'] = thresh_map
             gt_batch['thresh_mask'] = thresh_mask
         else:
             img = data
@@ -33,7 +33,7 @@ class DBNet(nn.Module):
         return x
 
 
-class DBLoss(nn.Module):
+class DetLoss(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.loss = create_module(config['loss']['function'])(config['loss']['l1_scale'],

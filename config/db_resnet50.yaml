@@ -27,6 +27,7 @@ val_load:
   num_workers: 4
 model:
   function: src.model.det_model,DBNet
+  loss_function: src.model.det_model,DetLoss
   backbone: src.model.backbone,resnet50
   head: src.model.head,DBHead
   segout: src.model.segout,SegDetector

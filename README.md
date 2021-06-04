@@ -1,2 +1,2 @@
 # text-in-image
-Baseline process for multi information extraction project 
+Baseline process for OCR + information extraction project 

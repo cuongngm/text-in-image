@@ -16,8 +16,8 @@ class MakeBorderMap:
         thresh_mask = np.zeros(img.shape[:2], dtype=np.float32)
 
         for i in range(len(polys)):
-            if dontcare[i]:
-                continue
+            # if dontcare[i]:
+            #     continue
             self.draw_border_map(polys[i], thresh_map, mask=thresh_mask)
         thresh_map = thresh_map * (self.thresh_max - self.thresh_min) + self.thresh_min
         return img, thresh_map, thresh_mask
@@ -77,7 +77,6 @@ class MakeBorderMap:
         xs: coordinates in the second axis
         point_1, point_2: (x, y), the end of the line
         '''
-        height, width = xs.shape[:2]
         square_distance_1 = np.square(
             xs - point_1[0]) + np.square(ys - point_1[1])
         square_distance_2 = np.square(

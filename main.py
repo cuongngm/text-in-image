@@ -12,10 +12,23 @@ if __name__ == '__main__':
     with open('config/db_resnet50.yaml', 'r') as stream:
         cfg = yaml.safe_load(stream)
     train_dataset = DBLoaderTrain(cfg)
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-    samples = next(iter(train_loader))
+    samples = next(iter(train_dataset))
+    img = samples[0]
 
-    db_model = create_module(cfg['model']['function'])(cfg)
-    print(db_model)  # <class 'src.model.det_model.DBNet'>
-    output = db_model(samples)
-    print(output)
+    gt = samples[1]
+    gt_mask = samples[2]
+    thresh_map = samples[3]
+    thresh_mask = samples[4]
+    """
+    polys = samples[1]
+    ignore = samples[2]
+    print(img.shape)
+    print(polys)
+    print(ignore)
+    for poly in polys:
+        poly = poly.reshape((-1, 1, 2))
+        img = cv2.polylines(img, np.int32([poly]), isClosed=True, color=(255, 0, 0), thickness=2)
+    """
+    plt.figure(figsize=(10, 10))
+    plt.imshow(gt)
+    plt.show()

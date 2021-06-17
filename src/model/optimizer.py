@@ -29,14 +29,6 @@ def lr_poly(base_lr, epoch, max_epoch=1200, factor=0.9):
 
 
 def SGDR(lr_max, lr_min, T_cur, T_m, ratio=0.3):
-    """
-    :param lr_max: 最大学习率
-    :param lr_min: 最小学习率
-    :param T_cur: 当前的epoch或iter
-    :param T_m: 隔多少调整的一次
-    :param ratio: 最大学习率衰减比率
-    :return:
-    """
     if T_cur % T_m == 0 and T_cur != 0:
         lr_max = lr_max - lr_max * ratio
     lr = lr_min + 1 / 2 * (lr_max - lr_min) * (1 + math.cos((T_cur % T_m / T_m) * math.pi))

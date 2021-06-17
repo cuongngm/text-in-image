@@ -5,24 +5,6 @@ import imgaug
 import torchvision.transforms as transforms
 
 
-def solve_polys(polys):
-    len_max = 0
-    for poly in polys:
-        if len(poly) // 2 > len_max:
-            len_max = len(poly) // 2
-    new_polys = []
-    for poly in polys:
-        new_poly = []
-        if len(poly) // 2 < len_max:
-            new_poly.extend(poly)
-            for i in range(len(poly) // 2, len_max):
-                new_poly.extend([poly[0], poly[1]])
-        else:
-            new_poly = poly
-        new_polys.append(new_poly)
-    return np.array(new_polys), len_max
-
-
 class RandomCropData:
     def __init__(self, max_tries=10, min_crop_side_ratio=0.1, crop_size=(640, 640)):
         self.size = crop_size

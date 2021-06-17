@@ -64,9 +64,14 @@ def train_val_program(args):
         best_recall = checkpoint['recall']
         best_precision = checkpoint['precision']
         best_hmean = checkpoint['hmean']
-        log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['althgorithm'], resume=True)
+        log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['algorithm'], resume=True)
     else:
         print('Training from scratch...')
+        log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['algorithm'], resume=True)
+        title = list(loss_bin.keys())
+        title.extend(['pixel acc', 'pixel iou', 't_recall', 't_precision', 't_hmean',
+                      'b_recall', 'b_precision', 'b_hmean'])
+        log_write.set_names(title)
     if args.start_epoch is not None:
         start_epoch = args.start_epoch
     for epoch in range(start_epoch, config['base']['n_epoch']):

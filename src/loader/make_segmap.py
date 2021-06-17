@@ -17,28 +17,29 @@ class MakeSegMap:
 
     def process(self, img, polys, dontcare):
         '''
-        requied keys:
-            image, polygons, ignore_tags, filename
-        adding keys:
-            mask
+        img: [640, 640, 3]
+        polys: list of array [14, 2] len N
+        dontcare: list ignore len N
         '''
         h, w = img.shape[:2]
+        polys = [poly for poly in polys if Polygon(poly).buffer(0).is_valid]
+
         if self.is_training:
             polys, dontcare = self.validate_polygons(
                 polys, dontcare, h, w)
         gt = np.zeros((h, w), dtype=np.float32)
         mask = np.ones((h, w), dtype=np.float32)
-
         for i in range(len(polys)):
-            polygon = polys[i]
-            height = max(polygon[:, 1]) - min(polygon[:, 1])
-            width = max(polygon[:, 0]) - min(polygon[:, 0])
-            if dontcare[i] or min(height, width) < self.min_text_size:
-                cv2.fillPoly(mask, polygon.astype(
+            poly = polys[i]
+            height = max(poly[:, 1]) - min(poly[:, 1])
+            width = max(poly[:, 0]) - min(poly[:, 0])
+
+            if min(height, width) < self.min_text_size:
+                cv2.fillPoly(mask, poly.astype(
                     np.int32)[np.newaxis, :, :], 0)
                 dontcare[i] = True
             else:
-                polygon_shape = Polygon(polygon)
+                polygon_shape = Polygon(poly)
                 distance = polygon_shape.area * \
                            (1 - np.power(self.shrink_ratio, 2)) / polygon_shape.length
                 subject = [tuple(l) for l in polys[i]]
@@ -46,8 +47,8 @@ class MakeSegMap:
                 padding.AddPath(subject, pyclipper.JT_ROUND,
                                 pyclipper.ET_CLOSEDPOLYGON)
                 shrinked = padding.Execute(-distance)
-                if shrinked == []:
-                    cv2.fillPoly(mask, polygon.astype(
+                if len(shrinked) == 0:
+                    cv2.fillPoly(mask, poly.astype(
                         np.int32)[np.newaxis, :, :], 0)
                     dontcare[i] = True
                     continue

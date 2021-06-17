@@ -32,7 +32,6 @@ class DBLoaderTrain(Dataset):
             with open(os.path.join(label_dir, label_name), 'r', encoding='utf-8') as file:
                 lines = file.readlines()
                 for line in lines:
-                    item = {}
                     poly = line.strip().strip('\ufeff').strip('\xef\xbb\xbf').split(',')
                     poly = list(map(int, poly))
                     poly = np.array(poly).reshape(-1, 2).tolist()
@@ -53,10 +52,11 @@ class DBLoaderTrain(Dataset):
         img, polys = self.aug.random_rotate(img, polys)
         img, polys = self.aug.random_flip(img, polys)
         img, polys, ignore = self.aug.random_crop_db(img, polys, ignore=tags)
+
         # make segment map, make border map
         img, gt, gt_mask = self.MSM.process(img, polys, ignore)
         img, thresh_map, thresh_mask = self.MBM.process(img, polys, ignore)
-
+        """
         img = Image.fromarray(img).convert('RGB')
         img = transforms.ColorJitter(brightness=32.0/255, saturation=0.5)(img)
         img = self.aug.normalize_img(img)
@@ -65,4 +65,6 @@ class DBLoaderTrain(Dataset):
         gt_mask = torch.from_numpy(gt_mask).float()
         thresh_map = torch.from_numpy(thresh_map).float()
         thresh_mask = torch.from_numpy(thresh_mask).float()
+        """
+        # return img, gt, gt_mask, thresh_map, thresh_mask
         return img, gt, gt_mask, thresh_map, thresh_mask

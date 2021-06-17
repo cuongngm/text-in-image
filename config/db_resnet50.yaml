@@ -1,11 +1,12 @@
 base:
-  althgorithm: DBnet
+  algorithm: DBnet
   crop_shape: [640, 640]
   pretrained: False
   in_channels: [256, 512, 1024, 2048]
   inner_channels: 256
   k: 50
   n_epoch: 600
+  save_epoch: 1
   start_val: 200
   show_step: 100
   adaptive: True
@@ -21,8 +22,8 @@ train_load:
   num_workers: 4
 val_load:
   function: src.loader.det_loader,DBLoaderTrain
-  val_img_dir: 'dataset/CTW1500/val/img'
-  val_label_dir: 'dataset/CTW1500/val/gt'
+  val_img_dir: 'dataset/CTW1500/test/img'
+  val_label_dir: 'dataset/CTW1500/test/gt'
   batch_size: 8
   num_workers: 4
 model:
@@ -51,4 +52,3 @@ postprocess:
   is_poly: False
   unclip_ratio: 1.5
   min_size: 3
-

@@ -24,8 +24,10 @@ val_load:
   function: src.loader.det_loader,DBLoaderTrain
   val_img_dir: 'dataset/CTW1500/test/img'
   val_label_dir: 'dataset/CTW1500/test/gt'
-  batch_size: 8
+  batch_size: 1
   num_workers: 4
+  test_size: 736
+  stride: 32
 model:
   function: src.model.det_model,DBNet
   loss_function: src.model.det_model,DetLoss

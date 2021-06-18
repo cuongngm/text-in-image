@@ -30,5 +30,5 @@ if __name__ == '__main__':
         img = cv2.polylines(img, np.int32([poly]), isClosed=True, color=(255, 0, 0), thickness=2)
     """
     plt.figure(figsize=(10, 10))
-    plt.imshow(gt)
+    plt.imshow(thresh_mask)
     plt.show()

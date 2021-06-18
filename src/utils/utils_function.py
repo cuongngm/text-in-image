@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import random
+import math
 from PIL import Image
 from pathlib import Path
 import importlib
@@ -112,3 +113,25 @@ class AverageMeter:
         self.sum += val*n
         self.count += n
         self.avg = self.sum / self.count
+
+
+def resize_image(img, algorithm, side_len=736, stride=128):
+    if algorithm == 'DB' or algorithm == 'PAN' or algorithm == 'CRNN':
+        height, width, _ = img.shape
+        if height < width:
+            new_height = side_len
+            new_width = int(math.ceil(new_height / height * width / stride) * stride)
+        else:
+            new_width = side_len
+            new_height = int(math.ceil(new_width / width * height / stride) * stride)
+        resized_img = cv2.resize(img, (new_width, new_height))
+    else:
+        height, width, _ = img.shape
+        if height > width:
+            new_height = side_len
+            new_width = int(math.ceil(new_height / height * width / stride) * stride)
+        else:
+            new_width = side_len
+            new_height = int(math.ceil(new_width / width * height / stride) * stride)
+        resized_img = cv2.resize(img, (new_width, new_height))
+    return resized_img

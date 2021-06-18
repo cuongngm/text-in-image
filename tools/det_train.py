@@ -67,7 +67,7 @@ def train_val_program(args):
         log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['algorithm'], resume=True)
     else:
         print('Training from scratch...')
-        log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['algorithm'], resume=True)
+        log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['algorithm'], resume=False)
         title = list(loss_bin.keys())
         title.extend(['pixel acc', 'pixel iou', 't_recall', 't_precision', 't_hmean',
                       'b_recall', 'b_precision', 'b_hmean'])
@@ -77,7 +77,7 @@ def train_val_program(args):
     for epoch in range(start_epoch, config['base']['n_epoch']):
         model.train()
         optimizer_decay(config, optimizer, epoch)
-        loss_write = model_train(train_loader, model, criterion, optimizer, loss_bin, args, config, epoch)
+        loss_write = model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch)
         if epoch >= config['base']['start_val']:
             create_dir(os.path.join(checkpoints_path, 'val'))
             create_dir(os.path.join(checkpoints_path, 'val', 'res_img'))

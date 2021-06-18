@@ -8,6 +8,7 @@ import torchvision.transforms as transforms
 from src.loader.augment import DetAugment
 from src.loader.make_segmap import MakeSegMap
 from src.loader.make_bordermap import MakeBorderMap
+from src.utils.utils_function import resize_image
 
 
 class DBLoaderTrain(Dataset):
@@ -36,7 +37,7 @@ class DBLoaderTrain(Dataset):
                     poly = list(map(int, poly))
                     poly = np.array(poly).reshape(-1, 2).tolist()
                     polys.append(poly)
-                    tags.append('ignore')
+                    tags.append(False)
             label_list.append([np.array(polys), tags])
         assert len(img_list) == len(label_list), 'image with label not correct'
         return img_list, label_list
@@ -45,6 +46,7 @@ class DBLoaderTrain(Dataset):
         return len(self.img_list)
 
     def __getitem__(self, idx):
+        # index = self.img_list.index('dataset/CTW1500/train/img/CTW1500_0149.jpg')
         img_path = self.img_list[idx]
         polys, tags = self.label_list[idx]
         img = cv2.imread(img_path)
@@ -66,5 +68,33 @@ class DBLoaderTrain(Dataset):
         thresh_map = torch.from_numpy(thresh_map).float()
         thresh_mask = torch.from_numpy(thresh_mask).float()
         """
-        # return img, gt, gt_mask, thresh_map, thresh_mask
         return img, gt, gt_mask, thresh_map, thresh_mask
+
+
+class DBLoaderTest(Dataset):
+    def __init__(self, config):
+        super(DBLoaderTest, self).__init__()
+        self.img_list = self.get_img_files(config['testload']['test_file'])
+        self.TSM = DetAugment(config['base']['crop_shape'])
+        self.test_size = config['testload']['test_size']
+        self.config = config
+
+    def get_img_files(self, test_txt_file):
+        img_list = []
+        with open(test_txt_file, 'r', encoding='utf-8') as fid:
+            lines = fid.readlines()
+            for line in lines:
+                line = line.strip('\n')
+                img_list.append(line)
+        return img_list
+
+    def __len__(self):
+        return len(self.img_list)
+
+    def __getitem__(self, index):
+        ori_img = cv2.imread(self.img_list[index])
+        img = resize_image(ori_img, self.config['base']['algorithm'], self.test_size,
+                           stride=self.config['testload']['stride'])
+        img = Image.fromarray(img).convert('RGB')
+        img = self.TSM.normalize_img(img)
+        return img, ori_img

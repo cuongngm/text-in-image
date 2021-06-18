@@ -74,18 +74,16 @@ class DBLoaderTrain(Dataset):
 class DBLoaderTest(Dataset):
     def __init__(self, config):
         super(DBLoaderTest, self).__init__()
-        self.img_list = self.get_img_files(config['testload']['test_file'])
+        self.img_list = self.get_img_files(config['val_load']['val_img_dir'])
         self.TSM = DetAugment(config['base']['crop_shape'])
-        self.test_size = config['testload']['test_size']
+        self.test_size = config['val_load']['test_size']
         self.config = config
 
-    def get_img_files(self, test_txt_file):
+    def get_img_files(self, img_dir):
         img_list = []
-        with open(test_txt_file, 'r', encoding='utf-8') as fid:
-            lines = fid.readlines()
-            for line in lines:
-                line = line.strip('\n')
-                img_list.append(line)
+        for filename in os.listdir(img_dir):
+            filepath = os.path.join(img_dir, filename)
+            img_list.append(filepath)
         return img_list
 
     def __len__(self):
@@ -94,7 +92,7 @@ class DBLoaderTest(Dataset):
     def __getitem__(self, index):
         ori_img = cv2.imread(self.img_list[index])
         img = resize_image(ori_img, self.config['base']['algorithm'], self.test_size,
-                           stride=self.config['testload']['stride'])
+                           stride=self.config['val_load']['stride'])
         img = Image.fromarray(img).convert('RGB')
         img = self.TSM.normalize_img(img)
         return img, ori_img

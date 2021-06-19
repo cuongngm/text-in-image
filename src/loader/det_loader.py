@@ -58,7 +58,7 @@ class DBLoaderTrain(Dataset):
         # make segment map, make border map
         img, gt, gt_mask = self.MSM.process(img, polys, ignore)
         img, thresh_map, thresh_mask = self.MBM.process(img, polys, ignore)
-        """
+
         img = Image.fromarray(img).convert('RGB')
         img = transforms.ColorJitter(brightness=32.0/255, saturation=0.5)(img)
         img = self.aug.normalize_img(img)
@@ -67,7 +67,7 @@ class DBLoaderTrain(Dataset):
         gt_mask = torch.from_numpy(gt_mask).float()
         thresh_map = torch.from_numpy(thresh_map).float()
         thresh_mask = torch.from_numpy(thresh_mask).float()
-        """
+
         return img, gt, gt_mask, thresh_map, thresh_mask
 
 

@@ -1,7 +1,7 @@
 base:
   algorithm: DBnet
   crop_shape: [640, 640]
-  pretrained: False
+  pretrained: True
   in_channels: [256, 512, 1024, 2048]
   inner_channels: 256
   k: 50

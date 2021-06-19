@@ -3,6 +3,7 @@ import os
 import yaml
 import argparse
 import random
+import warnings
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -13,7 +14,7 @@ from src.utils.logger import Logger
 from src.utils.metrics import runningScore
 from src.utils.cal_iou_acc import cal_DB
 from src.utils.cal_recall_pre_f1 import cal_recall_precison_f1
-
+warnings.filterwarnings('ignore')
 GLOBAL_WORKER_ID = None
 GLOBAL_SEED = 123456
 

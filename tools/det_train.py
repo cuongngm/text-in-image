@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader
 import sys
 sys.path.append('./')
-from src.utils.utils_function import create_dir, create_module, create_loss_bin, save_checkpoint
+from src.utils.utils_function import create_dir, create_module, create_loss_bin, save_checkpoint, merge_config
 from src.utils.logger import Logger
 from src.utils.metrics import runningScore
 from src.utils.cal_iou_acc import cal_DB
@@ -28,6 +28,7 @@ random.seed(GLOBAL_SEED)
 def train_val_program(args):
     with open(args.config, 'r') as stream:
         config = yaml.safe_load(stream)
+    config = merge_config(config, args)
     os.environ["CUDA_VISIBLE_DEVICES"] = config['base']['gpu_id']
 
     create_dir(config['base']['checkpoint'])
@@ -50,7 +51,7 @@ def train_val_program(args):
             model = torch.nn.DataParallel(model).cuda()
         else:
             model = model.cuda()
-        criterion.cuda()
+        criterion = criterion.cuda()
 
     start_epoch = 0
     recall, precision, hmean = 0, 0, 0

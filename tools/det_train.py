@@ -171,7 +171,7 @@ def model_eval(test_dataset, test_loader, model, imgprocess, checkpoint, config)
                     bbox_str = ','.join(bbox_str) + '\n'
                     fid_res.write(bbox_str)
             cv2.imwrite(os.path.join(checkpoint, 'val', 'res_img', image_name + '.jpg'), img_show)
-    result_dict = cal_recall_precison_f1(config['val_load']['val_label_dir'], os.path.join(checkpoint, 'val', 'res_img'))
+    result_dict = cal_recall_precison_f1(config['val_load']['val_label_dir'], os.path.join(checkpoint, 'val', 'res_txt'))
     return result_dict['recall'], result_dict['precision'], result_dict['hmean']
 
 

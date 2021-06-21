@@ -14,16 +14,17 @@ base:
   gpu_id: 0,1
   restore: False
   restore_file: 'checkpoint/current.pth'
+  dataset: ICDAR
 train_load:
   function: src.loader.det_loader,DBLoaderTrain
-  train_img_dir: 'dataset/CTW1500/train/img'
-  train_label_dir: 'dataset/CTW1500/train/gt'
+  train_img_dir: '/data/cuongnm1/dataset/icdar/train/img'
+  train_label_dir: '/data/cuongnm1/dataset/icdar/train/gt'
   batch_size: 8
   num_workers: 4
 val_load:
   function: src.loader.det_loader,DBLoaderTrain
-  val_img_dir: 'dataset/CTW1500/test/img'
-  val_label_dir: 'dataset/CTW1500/test/gt'
+  val_img_dir: '/data/cuongnm1/dataset/icdar/test/img'
+  val_label_dir: '/data/cuongnm1/dataset/icdar/test/gt'
   batch_size: 1
   num_workers: 4
   test_size: 736

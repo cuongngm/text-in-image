@@ -15,14 +15,6 @@ from src.utils.metrics import runningScore
 from src.utils.cal_iou_acc import cal_DB
 from src.utils.cal_recall_pre_f1 import cal_recall_precison_f1
 warnings.filterwarnings('ignore')
-GLOBAL_WORKER_ID = None
-GLOBAL_SEED = 123456
-
-torch.manual_seed(GLOBAL_SEED)
-torch.cuda.manual_seed(GLOBAL_SEED)
-torch.cuda.manual_seed_all(GLOBAL_SEED)
-np.random.seed(GLOBAL_SEED)
-random.seed(GLOBAL_SEED)
 
 
 def train_val_program(args):

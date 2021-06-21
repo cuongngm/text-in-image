@@ -178,6 +178,7 @@ def model_eval(test_dataset, test_loader, model, imgprocess, checkpoint, config)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyper_parameter')
     parser.add_argument('--config', help='config path')
+    parser.add_argument('--start_epoch', type=int, default=None)
     # parameter training
     parser.add_argument('--start_val', type=int, default=1)
     args = parser.parse_args()

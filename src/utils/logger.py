@@ -1,6 +1,3 @@
-# -*- coding:utf-8 _*-
-# A simple torch style logger
-# (C) Wei YANG 2017
 from __future__ import absolute_import
 
 import logging
@@ -8,18 +5,18 @@ import logging
 
 class TrainLog(object):
     def __init__(self, LOG_FILE):
-        file_handler = logging.FileHandler(LOG_FILE)  # 输出到文件
-        console_handler = logging.StreamHandler()  # 输出到控制台
-        file_handler.setLevel('INFO')  # error以上才输出到文件
-        console_handler.setLevel('INFO')  # info以上才输出到控制台
+        file_handler = logging.FileHandler(LOG_FILE)
+        console_handler = logging.StreamHandler()
+        file_handler.setLevel('INFO')
+        console_handler.setLevel('INFO')
 
         fmt = '%(asctime)s - %(funcName)s - %(lineno)s - %(levelname)s - %(message)s'
         formatter = logging.Formatter(fmt)
-        file_handler.setFormatter(formatter)  # 设置输出内容的格式
+        file_handler.setFormatter(formatter)
         console_handler.setFormatter(formatter)
 
         logger = logging.getLogger('TrainLog')
-        logger.setLevel('INFO')  # 设置了这个才会把debug以上的输出到控制台
+        logger.setLevel('INFO')
 
         logger.addHandler(console_handler)
         logger.addHandler(file_handler)

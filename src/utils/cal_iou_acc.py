@@ -1,9 +1,3 @@
-#-*- coding:utf-8 _*-
-"""
-@author:fxw
-@file: cal_iou_acc.py
-@time: 2020/08/13
-"""
 import torch
 import numpy as np
 

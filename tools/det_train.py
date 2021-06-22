@@ -96,16 +96,16 @@ def train_val_program(args):
         log_write.append(loss_write)
         for key in loss_bin.keys():
             loss_bin[key].loss_clear()
-        if epoch % config['base']['save_epoch'] == 0:
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'lr': config['optimizer']['base_lr'],
-                'optimizer': optimizer.state_dict(),
-                'hmean': 0,
-                'precision': 0,
-                'recall': 0,
-            }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
+
+        save_checkpoint({
+            'epoch': epoch + 1,
+            'state_dict': model.state_dict(),
+            'lr': config['optimizer']['base_lr'],
+            'optimizer': optimizer.state_dict(),
+            'hmean': 0,
+            'precision': 0,
+            'recall': 0,
+        }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
 
 
 def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch):

@@ -6,7 +6,6 @@ base:
   inner_channels: 256
   k: 50
   n_epoch: 600
-  save_epoch: 1
   epoch_val: 50
   show_step: 100
   adaptive: True

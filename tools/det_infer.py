@@ -5,6 +5,7 @@ import yaml
 import numpy as np
 import torch
 import sys
+import time
 from PIL import Image
 import torchvision.transforms as transforms
 sys.path.append('./')
@@ -53,25 +54,6 @@ def get_img(ori_imgs, config):
     return torch.cat(imgs, 0), scales
 
 
-def infer_image(config):
-    img_path = config['infer']['img_path']
-    result_path = config['infer']['result_path']
-    test_bin = TestProgram(config)
-    create_dir(result_path)
-    create_dir(os.path.join(result_path, 'result_img'))
-    create_dir(os.path.join(result_path, 'result_txt'))
-    if os.path.isdir(img_path):
-        files = os.listdir(img_path)
-        batch_imgs, batch_img_names = get_batch_files(img_path, files, batch_size=config['val_load']['batch_size'])
-        for i in range(len(batch_imgs)):
-            infer_one_img(test_bin, [batch_imgs], [batch_img_names], result_path)
-    else:
-        image_name = img_path.split('/')[-1].split('.')[0]
-        img = cv2.imread(img_path)
-        infer_one_img(test_bin, [img], [image_name], result_path)
-    return config
-
-
 class TestProgram:
     def __init__(self, config):
         super().__init__()
@@ -110,6 +92,27 @@ def infer_one_img(bin, img, img_name, result_path):
         cv2.imwrite(os.path.join(result_path, 'result_img', img_name[i] + '.jpg'), img_show)
 
 
+def infer_image(config):
+    img_path = config['infer']['img_path']
+    result_path = config['infer']['result_path']
+    test_bin = TestProgram(config)
+    create_dir(result_path)
+    create_dir(os.path.join(result_path, 'result_img'))
+    create_dir(os.path.join(result_path, 'result_txt'))
+    if os.path.isdir(img_path):
+        print('inference with image folder')
+        files = os.listdir(img_path)
+        batch_imgs, batch_img_names = get_batch_files(img_path, files, batch_size=config['val_load']['batch_size'])
+        for i in range(len(batch_imgs)):
+            infer_one_img(test_bin, batch_imgs[i], batch_img_names[i], result_path)
+    else:
+        print('inference with image path')
+        image_name = img_path.split('/')[-1].split('.')[0]
+        img = cv2.imread(img_path)
+        infer_one_img(test_bin, [img], [image_name], result_path)
+    return config
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyper params')
     parser.add_argument('--config', help='config file path')
@@ -118,4 +121,6 @@ if __name__ == '__main__':
     parser.add_argument('--result_path', type=str, default=None)
     args = parser.parse_args()
     config = config_load(args)
+    exe_time = time.time()
     infer_image(config)
+    print('Execution time:', time.time() - exe_time)

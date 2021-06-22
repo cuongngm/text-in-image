@@ -72,7 +72,7 @@ def train_val_program(args):
         model.train()
         optimizer_decay(config, optimizer, epoch)
         loss_write = model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch)
-        if epoch >= config['base']['start_val']:
+        if epoch % config['base']['epoch_val'] == 0:
             create_dir(os.path.join(checkpoints_path, 'val'))
             create_dir(os.path.join(checkpoints_path, 'val', 'res_img'))
             create_dir(os.path.join(checkpoints_path, 'val', 'res_txt'))

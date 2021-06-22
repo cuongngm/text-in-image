@@ -7,7 +7,7 @@ base:
   k: 50
   n_epoch: 600
   save_epoch: 1
-  start_val: 200
+  epoch_val: 50
   show_step: 100
   adaptive: True
   checkpoint: 'checkpoint'
@@ -22,7 +22,7 @@ train_load:
   batch_size: 8
   num_workers: 4
 val_load:
-  function: src.loader.det_loader,DBLoaderTrain
+  function: src.loader.det_loader,DBLoaderTest
   val_img_dir: '/data/cuongnm1/dataset/icdar/test/img'
   val_label_dir: '/data/cuongnm1/dataset/icdar/test/gt'
   batch_size: 1
@@ -55,3 +55,7 @@ postprocess:
   is_poly: False
   unclip_ratio: 1.5
   min_size: 3
+infer:
+  model_path: 'checkpoint/DBnet_best.pth'
+  img_path: 'dataset/test/1.jpg'
+  result_path: 'dataset/result'

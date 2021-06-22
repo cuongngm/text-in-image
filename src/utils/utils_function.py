@@ -135,3 +135,29 @@ def resize_image(img, algorithm, side_len=736, stride=128):
             new_height = int(math.ceil(new_width / width * height / stride) * stride)
         resized_img = cv2.resize(img, (new_width, new_height))
     return resized_img
+
+
+def resize_image_batch(img, side_len=1536, add_padding=True):
+    stride = 32
+    height, width, _ = img.shape
+    flag = None
+    if height > width:
+        flag = True
+        new_height = side_len
+        new_width = int(math.ceil(new_height / height * width / stride) * stride)
+    else:
+        flag = False
+        new_width = side_len
+        new_height = int(math.ceil(new_width / width * height / stride) * stride)
+    resized_img = cv2.resize(img, (new_width, new_height))
+    scale = (float(width)/new_width, float(height)/new_height)
+    if add_padding is True:
+        if flag:
+            padded_image = cv2.copyMakeBorder(resized_img, 0, 0,
+                          0, side_len-new_width, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+        else:
+            padded_image = cv2.copyMakeBorder(resized_img, 0, side_len-new_height,
+                          0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+    else:
+        return resized_img, scale
+    return padded_image, scale

@@ -35,8 +35,7 @@ def save_checkpoint(state, checkpoint='checkpoint', filename='model_best.pth'):
     torch.save(state, model_path)
 
 
-def load_model(model, model_path):
-    device = torch.device('cuda:0') if torch.cuda.is_available() else 'cpu'
+def load_model(model, model_path, device='cuda:0'):
     model_dict = torch.load(model_path, map_location=device)
     if 'state_dict' in model_dict.keys():
         model_dict = model_dict['state_dict']

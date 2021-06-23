@@ -32,7 +32,7 @@ def get_batch_files(path, img_files, batch_size=3):
         img_names = [img_file.split('.')[0] for img_file in files]
         batch_imgs.append(img)
         batch_img_names.append(img_names)
-    files = img_files[batch_size * num:len(img_files)]
+    files = img_files[batch_size*(num):len(img_files)]
     if len(files) != 0:
         img = [cv2.imread(os.path.join(path, img_file)) for img_file in files]
         img_names = [img_file.split('.')[0] for img_file in files]

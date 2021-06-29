@@ -32,7 +32,7 @@ def get_batch_files(path, img_files, batch_size=3):
         img_names = [img_file.split('.')[0] for img_file in files]
         batch_imgs.append(img)
         batch_img_names.append(img_names)
-    files = img_files[batch_size * num:len(img_files)]
+    files = img_files[batch_size*(num):len(img_files)]
     if len(files) != 0:
         img = [cv2.imread(os.path.join(path, img_file)) for img_file in files]
         img_names = [img_file.split('.')[0] for img_file in files]
@@ -52,6 +52,34 @@ def get_img(ori_imgs, config):
         imgs.append(img)
         scales.append(scale)
     return torch.cat(imgs, 0), scales
+
+
+class DetectDB:
+    def __init__(self, config):
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.config = config
+        model = create_module(config['model']['function'])(config)
+        model = load_model(model, config['infer']['model_path'], self.device)
+        self.model = model.to(self.device)
+        self.thresh = config['postprocess']['thresh']
+        self.box_thresh = config['postprocess']['box_thresh']
+        self.unclip_ratio = config['postprocess']['unclip_ratio']
+        self.img_process = create_module(config['postprocess']['function'])(config)
+
+    def detect(self, img_path):
+        img_ori = cv2.imread(img_path)
+        h_origin, w_origin = img_ori.shape[:2]
+        img, scales = get_img(img_ori, self.config)
+        img = img.to(self.device)
+        with torch.no_grad():
+            out = self.model(img)
+        out = out.cpu().numpy()
+        bbox_batch, score_batch = self.img_process(out, scales)
+        bboxes = bbox_batch[0]
+        for bbox in bboxes:
+            bbox = bbox.reshape(-1, 2)
+
+        return img
 
 
 class TestProgram:

@@ -1,11 +1,11 @@
 base:
-  algorithm: DBnet
-  crop_shape: [640, 640]
+  algorithm: DB
+  crop_shape: [736, 736]
   pretrained: True
   in_channels: [256, 512, 1024, 2048]
   inner_channels: 256
   k: 50
-  n_epoch: 600
+  n_epoch: 1200
   epoch_val: 50
   show_step: 100
   adaptive: True
@@ -13,17 +13,17 @@ base:
   gpu_id: 0,1
   restore: False
   restore_file: 'checkpoint/current.pth'
-  dataset: ICDAR
+  dataset: CTW1500
 train_load:
   function: src.loader.det_loader,DBLoaderTrain
-  train_img_dir: '/data/cuongnm1/dataset/icdar/train/img'
-  train_label_dir: '/data/cuongnm1/dataset/icdar/train/gt'
+  train_img_dir: 'dataset/CTW1500/train/img'
+  train_label_dir: 'dataset/CTW1500/train/gt'
   batch_size: 8
   num_workers: 4
 val_load:
   function: src.loader.det_loader,DBLoaderTest
-  val_img_dir: '/data/cuongnm1/dataset/icdar/test/img'
-  val_label_dir: '/data/cuongnm1/dataset/icdar/test/gt'
+  val_img_dir: 'dataset/CTW1500/test/img'
+  val_label_dir: 'dataset/CTW1500/test/gt'
   batch_size: 1
   num_workers: 4
   test_size: 736

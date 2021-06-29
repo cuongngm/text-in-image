@@ -2,7 +2,6 @@ import cv2
 import os
 import yaml
 import argparse
-import random
 import warnings
 import numpy as np
 import torch
@@ -20,7 +19,7 @@ warnings.filterwarnings('ignore')
 def train_val_program(args):
     with open(args.config, 'r') as stream:
         config = yaml.safe_load(stream)
-    config = merge_config(config, args)
+    # config = merge_config(config, args)
     os.environ["CUDA_VISIBLE_DEVICES"] = config['base']['gpu_id']
 
     create_dir(config['base']['checkpoint'])
@@ -45,7 +44,7 @@ def train_val_program(args):
             model = model.cuda()
         criterion = criterion.cuda()
 
-    start_epoch = 0
+    start_epoch = 1
     recall, precision, hmean = 0, 0, 0
     best_recall, best_precision, best_hmean = 0, 0, 0
     if config['base']['restore']:
@@ -63,12 +62,12 @@ def train_val_program(args):
         print('Training from scratch...')
         log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['algorithm'], resume=False)
         title = list(loss_bin.keys())
-        title.extend(['pixel acc', 'pixel iou', 't_recall', 't_precision', 't_hmean',
+        title.extend(['acc', 'iou', 't_recall', 't_precision', 't_hmean',
                       'b_recall', 'b_precision', 'b_hmean'])
         log_write.set_names(title)
     if args.start_epoch is not None:
         start_epoch = args.start_epoch
-    for epoch in range(start_epoch, config['base']['n_epoch']):
+    for epoch in range(start_epoch, config['base']['n_epoch'] + 1):
         model.train()
         optimizer_decay(config, optimizer, epoch)
         loss_write = model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch)
@@ -105,7 +104,7 @@ def train_val_program(args):
             'hmean': 0,
             'precision': 0,
             'recall': 0,
-        }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
+        }, checkpoints_path, filename=config['base']['algorithm'] + '_' + config['base']['dataset'] + '_best.pth')
 
 
 def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch):

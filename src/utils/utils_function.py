@@ -90,7 +90,7 @@ class LossAccumulator:
 
 def merge_config(config, args):
     for key_1 in config.keys():
-        if isinstance(key_1, dict):
+        if isinstance(config[key_1], dict):
             for key_2 in config[key_1].keys():
                 if key_2 in dir(args):
                     config[key_1, key_2] = getattr(args, key_2)

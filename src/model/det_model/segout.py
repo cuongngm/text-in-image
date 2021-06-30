@@ -62,7 +62,7 @@ class SegDetector(nn.Module):
         return self.thresh
 
     def _init_upsample(self, in_channels, out_channels):
-            return nn.ConvTranspose2d(in_channels, out_channels, 2, 2)
+        return nn.ConvTranspose2d(in_channels, out_channels, 2, 2)
 
     def forward(self, fuse, img):
         binary = self.binarize(fuse)

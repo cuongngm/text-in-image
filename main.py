@@ -17,6 +17,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=4)
     samples = next(iter(train_dataset))
     img = samples[0]
+    """
     gt = samples[1]
     gt_mask = samples[2]
     thresh_map = samples[3]
@@ -30,7 +31,7 @@ if __name__ == '__main__':
     for poly in polys:
         poly = poly.reshape((-1, 1, 2))
         img = cv2.polylines(img, np.int32([poly]), isClosed=True, color=(255, 0, 0), thickness=2)
-    """
+
     plt.figure(figsize=(10, 10))
-    plt.imshow(gt)
+    plt.imshow(img)
     plt.show()

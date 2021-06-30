@@ -31,7 +31,7 @@ val_load:
 model:
   function: src.model.det_model.db_net,DBNet
   loss_function: src.model.det_model,DetLoss
-  backbone: src.model.backbone.resnet,resnet50
+  backbone: src.model.backbone.resnet_dcn,deformable_resnet50
   head: src.model.det_model.head,DBHead
   segout: src.model.det_model.segout,SegDetector
 loss:
@@ -42,7 +42,7 @@ optimizer:
   function: src.model.optimizer,SGDDecay
   base_lr: 0.002
   weight_decay: 0.0005
-  momentum: 0.95
+  momentum: 0.99
 optimizer_decay:
   function: src.model.optimizer,adjust_learning_rate_poly
   factor: 0.9

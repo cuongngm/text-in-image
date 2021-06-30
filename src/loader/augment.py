@@ -5,6 +5,24 @@ import imgaug
 import torchvision.transforms as transforms
 
 
+def solve_polys(polys):
+    len_max = 0
+    for poly in polys:
+        if len(poly) // 2 > len_max:
+            len_max = len(poly) // 2
+    new_polys = []
+    for poly in polys:
+        new_poly = []
+        if len(poly) // 2 < len_max:
+            new_poly.extend(poly)
+            for i in range(len(poly) // 2, len_max):
+                new_poly.extend([poly[0], poly[1]])
+        else:
+            new_poly = poly
+        new_polys.append(new_poly)
+    return np.array(new_polys), len_max
+
+
 class RandomCropData:
     def __init__(self, max_tries=10, min_crop_side_ratio=0.1, crop_size=(640, 640)):
         self.size = crop_size
@@ -149,6 +167,28 @@ class DetAugment:
         keypoints = aug.augment_keypoints([imgaug.KeypointsOnImage(keypoints, shape=img_shape[:2])])[0].keypoints
         poly = [(p.x, p.y) for p in keypoints]
         return np.array(poly)
+
+    def random_scale(self, img, polys, min_size):
+        polys, len_max = solve_polys(polys)
+        h, w = img.shape[0:2]
+        new_polys = []
+        for poly in polys:
+            poly = np.asarray(poly)
+            poly = poly / ([w * 1.0, h * 1.0] * len_max)
+            new_polys.append(poly)
+        new_polys = np.array(new_polys)
+        if max(h, w) > 1280:
+            scale = 1280.0 / max(h, w)
+            img = cv2.resize(img, dsize=None, fx=scale, fy=scale)
+        h, w = img.shape[0:2]
+        random_scale = np.array([0.5, 1.0, 2.0, 3.0])
+        scale = np.random.choice(random_scale)
+        if min(h, w) * scale <= min_size:
+            scale = (min_size + 10) * 1.0 / min(h, w)
+        img = cv2.resize(img, dsize=None, fx=scale, fy=scale)
+        new_polys = np.reshape(new_polys * ([img.shape[1], img.shape[0]] * len_max),
+                               (new_polys.shape[0], polys.shape[1] // 2, 2))
+        return img, new_polys
 
     def random_rotate(self, img, polys, random_range=[-10, 10]):
         angle = np.random.randint(random_range[0], random_range[1])

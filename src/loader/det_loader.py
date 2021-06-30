@@ -38,7 +38,7 @@ class DBLoaderTrain(Dataset):
                     poly = line.strip().strip('\ufeff').strip('\xef\xbb\xbf').split(',')
                     if self.dataset_name == 'CTW1500':
                         poly = list(map(int, poly))
-                        poly = np.array(poly).reshape(-1, 2).tolist()
+                        # poly = np.array(poly).reshape(-1, 2).tolist()
                         polys.append(poly)
                         tags.append(False)
                     elif self.dataset_name == 'ICDAR':
@@ -49,7 +49,7 @@ class DBLoaderTrain(Dataset):
                             tags.append(False)
                         poly = poly[:8]
                         poly = list(map(int, poly))
-                        poly = np.array(poly).reshape(-1, 2).tolist()
+                        # poly = np.array(poly).reshape(-1, 2).tolist()
                         polys.append(poly)
             label_list.append([np.array(polys), tags])
         assert len(img_list) == len(label_list), 'image with label not correct'
@@ -64,6 +64,7 @@ class DBLoaderTrain(Dataset):
         polys, tags = self.label_list[idx]
         img = cv2.imread(img_path)
         # augment
+        img, polys = self.aug.random_scale(img, polys, self.crop_shape[0])
         img, polys = self.aug.random_rotate(img, polys)
         img, polys = self.aug.random_flip(img, polys)
         img, polys, ignore = self.aug.random_crop_db(img, polys, ignore=tags)

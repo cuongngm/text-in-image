@@ -101,9 +101,9 @@ def train_val_program(args):
             'state_dict': model.state_dict(),
             'lr': config['optimizer']['base_lr'],
             'optimizer': optimizer.state_dict(),
-            'hmean': 0,
-            'precision': 0,
-            'recall': 0,
+            'hmean': hmean,
+            'precision': precision,
+            'recall': recall,
         }, checkpoints_path, filename=config['base']['algorithm'] + '_' + config['base']['dataset'] + '_best.pth')
 
 

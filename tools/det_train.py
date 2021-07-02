@@ -79,6 +79,7 @@ def train_val_program(args):
             recall, precision, hmean = model_eval(val_dataset, val_loader, model, img_process, checkpoints_path, config)
             print('recall:{:.4f} \tprecision:{:.4f} \t hmean:{:.4f}'.format(recall, precision, hmean))
             if hmean > best_hmean:
+                print('Saving current best model')
                 save_checkpoint({
                     'epoch': epoch + 1,
                     'state_dict': model.state_dict(),
@@ -96,6 +97,7 @@ def train_val_program(args):
         for key in loss_bin.keys():
             loss_bin[key].loss_clear()
 
+        # save per epoch
         save_checkpoint({
             'epoch': epoch + 1,
             'state_dict': model.state_dict(),
@@ -104,7 +106,7 @@ def train_val_program(args):
             'hmean': hmean,
             'precision': precision,
             'recall': recall,
-        }, checkpoints_path, filename=config['base']['algorithm'] + '_' + config['base']['dataset'] + '_best.pth')
+        }, checkpoints_path, filename=config['base']['algorithm'] + '_' + config['base']['dataset'] + '.pth')
 
 
 def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch):

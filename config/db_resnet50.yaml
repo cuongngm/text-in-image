@@ -13,24 +13,24 @@ base:
   gpu_id: 0,1
   restore: False
   restore_file: 'checkpoint/current.pth'
-  dataset: CTW1500
+  dataset: 'ICDAR'
 train_load:
   function: src.loader.det_loader,DBLoaderTrain
-  train_img_dir: 'dataset/CTW1500/train/img'
-  train_label_dir: 'dataset/CTW1500/train/gt'
+  train_img_dir: 'dataset/ICDAR2015/train/img'
+  train_label_dir: 'dataset/ICDAR2015/train/gt'
   batch_size: 8
   num_workers: 4
 val_load:
   function: src.loader.det_loader,DBLoaderTest
-  val_img_dir: 'dataset/CTW1500/test/img'
-  val_label_dir: 'dataset/CTW1500/test/gt'
+  val_img_dir: 'dataset/ICDAR2015/test/img'
+  val_label_dir: 'dataset/ICDAR2015/test/gt'
   batch_size: 1
   num_workers: 4
   test_size: 736
   stride: 32
 model:
   function: src.model.det_model.db_net,DBNet
-  loss_function: src.model.det_model,DetLoss
+  loss_function: src.model.det_model.db_net,DetLoss
   backbone: src.model.backbone.resnet_dcn,deformable_resnet50
   head: src.model.det_model.head,DBHead
   segout: src.model.det_model.segout,SegDetector

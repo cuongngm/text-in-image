@@ -25,13 +25,14 @@ class DBLoaderTrain(Dataset):
     def get_base_info(self, img_dir, label_dir):
         img_list = []
         label_list = []
+        print('Load with {} dataset'.format(self.dataset_name))
         for img_name in os.listdir(img_dir):
             img_path = os.path.join(img_dir, img_name)
             img_list.append(img_path)
             polys = []
             tags = []
             label_name = img_name.replace('.jpg', '.txt')
-            # label_name = 'gt_' + label_name
+            label_name = 'gt_' + label_name
             with open(os.path.join(label_dir, label_name), 'r', encoding='utf-8') as file:
                 lines = file.readlines()
                 for line in lines:
@@ -43,10 +44,13 @@ class DBLoaderTrain(Dataset):
                         tags.append(False)
                     elif self.dataset_name == 'ICDAR':
                         gt = poly[:-1]
+
                         if '#' in gt:
                             tags.append(True)
                         else:
                             tags.append(False)
+
+                        # tags.append(False)
                         poly = poly[:8]
                         poly = list(map(int, poly))
                         # poly = np.array(poly).reshape(-1, 2).tolist()
@@ -64,11 +68,12 @@ class DBLoaderTrain(Dataset):
         polys, tags = self.label_list[idx]
         img = cv2.imread(img_path)
         # augment
+
         img, polys = self.aug.random_scale(img, polys, self.crop_shape[0])
         img, polys = self.aug.random_rotate(img, polys)
         img, polys = self.aug.random_flip(img, polys)
         img, polys, ignore = self.aug.random_crop_db(img, polys, ignore=tags)
-
+        # ignore = tags
         # make segment map, make border map
         img, gt, gt_mask = self.MSM.process(img, polys, ignore)
         img, thresh_map, thresh_mask = self.MBM.process(img, polys, ignore)

@@ -29,11 +29,11 @@ val_load:
   test_size: 736
   stride: 32
 model:
-  function: src.model.det_model.db_net,DBNet
+  function: src.model.det_model.db_net,DBNetVer1
   loss_function: src.model.det_model.db_net,DetLoss
-  backbone: src.model.backbone.resnet_dcn,deformable_resnet50
-  head: src.model.det_model.head,DBHead
-  segout: src.model.det_model.segout,SegDetector
+  backbone: src.model.backbone.resnet_dcn,resnet50
+  head: src.model.det_model.head,DBHeadVer1
+  segout: src.model.det_model.segout,SegDetectorVer1
 loss:
   function: src.model.loss,DBLoss
   l1_scale: 1

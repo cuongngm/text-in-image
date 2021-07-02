@@ -112,18 +112,21 @@ def train_val_program(args):
 def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch):
     running_metric_text = runningScore(2)
     for batch_idx, data in enumerate(train_loader):
-        pre_batch, gt_batch = model(data)
-        loss, metrics = criterion(pre_batch, gt_batch)
+        preds = model(data[0])
+        assert preds.size(1) == 3
+        _batch = torch.stack([data[1], data[2], data[3], data[4]])
+        total_loss = criterion(preds, _batch)
         optimizer.zero_grad()
-        loss.backward()
+        total_loss.backward()
         optimizer.step()
+
         for key in loss_bin.keys():
             if key in metrics.keys():
                 loss_bin[key].loss_add(metrics[key].item())
             else:
                 loss_bin[key].loss_add(loss.item())
         iou, acc = cal_DB(pre_batch['binary'], gt_batch['gt'], gt_batch['mask'], running_metric_text)
-        if (batch_idx + 1) % config['base']['show_step'] == 0:
+        if batch_idx % config['base']['show_step'] == 0:
             log = '({}/{}/{}/{}) | ' \
                 .format(epoch, config['base']['n_epoch'], batch_idx, len(train_loader))
             bin_keys = list(loss_bin.keys())
@@ -143,7 +146,6 @@ def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epo
 
 
 def model_eval(test_dataset, test_loader, model, imgprocess, checkpoint, config):
-
     for batch_idx, (imgs, ori_imgs) in enumerate(test_loader):
         if torch.cuda.is_available():
             imgs = imgs.cuda()

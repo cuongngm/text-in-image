@@ -49,3 +49,24 @@ class runningScore(object):
 
     def reset(self):
         self.confusion_matrix = np.zeros((self.n_classes, self.n_classes))
+
+
+def cal_text_score(texts, gt_texts, training_masks,
+                   running_metric_text, thresh=0.5):
+    """
+    :param texts:  pred_prob_map
+    :param gt_texts: gt_prob_map
+    :param training_masks: supervision map
+    """
+    training_masks = training_masks.data.cpu().numpy()
+
+    pred_text = texts.data.cpu().numpy() * training_masks
+    pred_text[pred_text < thresh] = 0
+    pred_text[pred_text > thresh] = 1
+    pred_text = pred_text.astype(np.int32)
+
+    gt_text = gt_texts.data.cpu().numpy() * training_masks
+    gt_text = gt_text.astype(np.int32)
+    running_metric_text.update(gt_text, pred_text)
+    score_text, _ = running_metric_text.get_scores()
+    return score_text

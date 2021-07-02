@@ -6,12 +6,13 @@ from src.loader.det_loader import DBLoaderTrain, DBLoaderTest
 from torch.utils.data import DataLoader
 import torch
 from src.utils.utils_function import create_module
-from src.model.det_model.db_net import DBNet
+from src.model.det_model.db_net import DBNetVer1
 
 
 if __name__ == '__main__':
     with open('config/db_resnet50.yaml', 'r') as stream:
         cfg = yaml.safe_load(stream)
+    """
     train_dataset = DBLoaderTrain(cfg)
     # test_dataset = DBLoaderTest(cfg)
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=4)
@@ -23,7 +24,7 @@ if __name__ == '__main__':
     gt_mask = samples[2]
     thresh_map = samples[3]
     thresh_mask = samples[4]
-    """
+    
     polys = samples[1]
     ignore = samples[2]
     print(img.shape)
@@ -32,7 +33,7 @@ if __name__ == '__main__':
     for poly in polys:
         poly = poly.reshape((-1, 1, 2))
         img = cv2.polylines(img, np.int32([poly]), isClosed=True, color=(255, 0, 0), thickness=2)
-    """
+    
     fig = plt.figure(figsize=(10, 10))
     rows = 2
     columns = 2
@@ -66,3 +67,8 @@ if __name__ == '__main__':
     # plt.imshow(img)
 
     plt.show()
+    """
+    img = torch.randn(1, 3, 640, 640)
+    model = DBNetVer1(cfg)
+    out = model(img)
+    print(out.size())

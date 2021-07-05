@@ -1,29 +1,27 @@
 import cv2
+from tqdm import tqdm
 import os
 import yaml
 import argparse
 import warnings
-import numpy as np
 import torch
 from torch.utils.data import DataLoader
 import sys
 sys.path.append('./')
-from src.utils.utils_function import create_dir, create_module, create_loss_bin, save_checkpoint, merge_config
+from src.utils.utils_function import create_dir, create_module, save_checkpoint
 from src.utils.logger import Logger
-from src.utils.metrics import runningScore
-from src.utils.cal_iou_acc import cal_DB
-from src.utils.cal_recall_pre_f1 import cal_recall_precison_f1
+from src.utils.metrics import runningScore, cal_text_score, QuadMetric
 warnings.filterwarnings('ignore')
 
 
 def train_val_program(args):
     with open(args.config, 'r') as stream:
         config = yaml.safe_load(stream)
-    # config = merge_config(config, args)
     os.environ["CUDA_VISIBLE_DEVICES"] = config['base']['gpu_id']
 
     create_dir(config['base']['checkpoint'])
     checkpoints_path = config['base']['checkpoint']
+
     model = create_module(config['model']['function'])(config)
     criterion = create_module(config['model']['loss_function'])(config)
     train_dataset = create_module(config['train_load']['function'])(config)
@@ -31,12 +29,12 @@ def train_val_program(args):
     optimizer = create_module(config['optimizer']['function'])(config, model.parameters())
     optimizer_decay = create_module(config['optimizer_decay']['function'])
     img_process = create_module(config['postprocess']['function'])(config)
-
+    metric_cls = QuadMetric()
     train_loader = DataLoader(train_dataset, batch_size=config['train_load']['batch_size'], shuffle=True,
                               num_workers=config['train_load']['num_workers'])
     val_loader = DataLoader(val_dataset, batch_size=config['val_load']['batch_size'], shuffle=False,
                             num_workers=config['val_load']['num_workers'])
-    loss_bin = create_loss_bin()
+
     if torch.cuda.is_available():
         if len(config['base']['gpu_id'].split(',')) > 1:
             model = torch.nn.DataParallel(model).cuda()
@@ -45,8 +43,7 @@ def train_val_program(args):
         criterion = criterion.cuda()
 
     start_epoch = 1
-    recall, precision, hmean = 0, 0, 0
-    best_recall, best_precision, best_hmean = 0, 0, 0
+    best_hmean = 0
     if config['base']['restore']:
         print('Resume from checkpoint...')
         assert os.path.isfile(config['base']['restore_file']), 'checkpoint path is not correct'
@@ -54,64 +51,41 @@ def train_val_program(args):
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        best_recall = checkpoint['recall']
-        best_precision = checkpoint['precision']
         best_hmean = checkpoint['hmean']
-        log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['algorithm'], resume=True)
     else:
         print('Training from scratch...')
-        log_write = Logger(os.path.join(checkpoints_path, 'log.txt'), title=config['base']['algorithm'], resume=False)
-        title = list(loss_bin.keys())
-        title.extend(['acc', 'iou', 't_recall', 't_precision', 't_hmean',
-                      'b_recall', 'b_precision', 'b_hmean'])
-        log_write.set_names(title)
     if args.start_epoch is not None:
         start_epoch = args.start_epoch
     for epoch in range(start_epoch, config['base']['n_epoch'] + 1):
         model.train()
         optimizer_decay(config, optimizer, epoch)
-        loss_write = model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch)
-        if epoch % config['base']['epoch_val'] == 0:
-            create_dir(os.path.join(checkpoints_path, 'val'))
-            create_dir(os.path.join(checkpoints_path, 'val', 'res_img'))
-            create_dir(os.path.join(checkpoints_path, 'val', 'res_txt'))
-            model.eval()
-            recall, precision, hmean = model_eval(val_dataset, val_loader, model, img_process, checkpoints_path, config)
-            print('recall:{:.4f} \tprecision:{:.4f} \t hmean:{:.4f}'.format(recall, precision, hmean))
-            if hmean > best_hmean:
-                print('Saving current best model')
-                save_checkpoint({
-                    'epoch': epoch + 1,
-                    'state_dict': model.state_dict(),
-                    'lr': config['optimizer']['base_lr'],
-                    'optimizer': optimizer.state_dict(),
-                    'hmean': hmean,
-                    'precision': precision,
-                    'recall': recall
-                }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
-                best_hmean = hmean
-                best_precision = precision
-                best_recall = recall
-        loss_write.extend([recall, precision, hmean, best_recall, best_precision, best_hmean])
-        log_write.append(loss_write)
-        for key in loss_bin.keys():
-            loss_bin[key].loss_clear()
-
+        train_loss = model_train(train_loader, model, criterion, optimizer, config, epoch)
+        print('Train loss:', train_loss)
+        model.eval()
+        recall, precision, hmean = model_eval(val_loader, model, img_process, config, metric_cls)
+        print('Recall:{}, precision:{}, hmean:{}'.format(recall, precision, hmean))
         # save per epoch
         save_checkpoint({
             'epoch': epoch + 1,
             'state_dict': model.state_dict(),
             'lr': config['optimizer']['base_lr'],
             'optimizer': optimizer.state_dict(),
-            'hmean': hmean,
-            'precision': precision,
-            'recall': recall,
-        }, checkpoints_path, filename=config['base']['algorithm'] + '_' + config['base']['dataset'] + '.pth')
+        }, checkpoints_path, filename=config['base']['algorithm'] + '_current.pth')
+        if hmean > best_hmean:
+            best_hmean = hmean
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'state_dict': model.state_dict(),
+                'lr': config['optimizer']['base_lr'],
+                'optimizer': optimizer.state_dict(),
+            }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
 
 
-def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epoch):
+def model_train(train_loader, model, criterion, optimizer, config, epoch):
     running_metric_text = runningScore(2)
+    train_loss = 0
     for batch_idx, data in enumerate(train_loader):
+        lr = optimizer.param_groups[0]['lr']
         preds = model(data[0])
         assert preds.size(1) == 3
         _batch = torch.stack([data[1], data[2], data[3], data[4]])
@@ -119,64 +93,34 @@ def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epo
         optimizer.zero_grad()
         total_loss.backward()
         optimizer.step()
-
-        for key in loss_bin.keys():
-            if key in metrics.keys():
-                loss_bin[key].loss_add(metrics[key].item())
-            else:
-                loss_bin[key].loss_add(loss.item())
-        iou, acc = cal_DB(pre_batch['binary'], gt_batch['gt'], gt_batch['mask'], running_metric_text)
+        score_shrink_map = cal_text_score(preds[:, 0, :, :],
+                                          data[1], data[2], running_metric_text, thresh=0.3)
+        acc = score_shrink_map['Mean Acc']
+        iou_shrink_map = score_shrink_map['Mean IoU']
+        train_loss += total_loss
         if batch_idx % config['base']['show_step'] == 0:
-            log = '({}/{}/{}/{}) | ' \
-                .format(epoch, config['base']['n_epoch'], batch_idx, len(train_loader))
-            bin_keys = list(loss_bin.keys())
-
-            for i in range(len(bin_keys)):
-                log += bin_keys[i] + ':{:.4f}'.format(loss_bin[bin_keys[i]].loss_mean()) + ' | '
-
-            log += 'ACC:{:.4f}'.format(acc) + ' | '
-            log += 'IOU:{:.4f}'.format(iou) + ' | '
-            log += 'lr:{:.8f}'.format(optimizer.param_groups[0]['lr'])
-            print(log)
-    loss_write = []
-    for key in list(loss_bin.keys()):
-        loss_write.append(loss_bin[key].loss_mean())
-    loss_write.extend([acc, iou])
-    return loss_write
+            print('Epoch:{} - Step:{} - lr:{} - loss:{} - acc:{} - iou:{}'.format(epoch+1, batch_idx, lr, total_loss,
+                                                                              acc, iou_shrink_map))
+    end_epoch_loss = train_loss / len(train_loader)
+    return end_epoch_loss
 
 
-def model_eval(test_dataset, test_loader, model, imgprocess, checkpoint, config):
-    for batch_idx, (imgs, ori_imgs) in enumerate(test_loader):
-        if torch.cuda.is_available():
-            imgs = imgs.cuda()
+def model_eval(test_loader, model, imgprocess, config, metric_cls):
+    raw_metrics = []
+    for idx, test_batch in tqdm(enumerate(test_loader)):
         with torch.no_grad():
-            out = model(imgs)
-        scales = []
-        if isinstance(out, dict):
-            img_num = out['f_score'].shape[0]
-        else:
-            img_num = out.shape[0]
-        for i in range(img_num):
-            scale = (ori_imgs[i].shape[1] * 1.0 / out.shape[3], ori_imgs[i].shape[0] * 1.0 / out.shape[2])
-            scales.append(scale)
-        out = out.cpu().numpy()
-        bbox_batch, score_batch = imgprocess(out, scales)
-        for i in range(len(bbox_batch)):
-            bboxes = bbox_batch[i]
-            img_show = ori_imgs[i].numpy().copy()
-            idx = i + out.shape[0] * batch_idx
-            image_name = test_dataset.img_list[idx].split('/')[-1].split('.')[0]  # windows use \\ not /
-            with open(os.path.join(checkpoint, 'val', 'res_txt', 'res_' + image_name + '.txt'), 'w+',
-                      encoding='utf-8') as fid_res:
-                for bbox in bboxes:
-                    bbox = bbox.reshape(-1, 2).astype(np.int)
-                    img_show = cv2.drawContours(img_show, [bbox], -1, (0, 255, 0), 1)
-                    bbox_str = [str(x) for x in bbox.reshape(-1)]
-                    bbox_str = ','.join(bbox_str) + '\n'
-                    fid_res.write(bbox_str)
-            cv2.imwrite(os.path.join(checkpoint, 'val', 'res_img', image_name + '.jpg'), img_show)
-    result_dict = cal_recall_precison_f1(config['val_load']['val_label_dir'], os.path.join(checkpoint, 'val', 'res_txt'))
-    return result_dict['recall'], result_dict['precision'], result_dict['hmean']
+            test_preds = model(test_batch[0])
+            assert test_preds.size(1) == 2
+            batch_shape = {'shape': config['base']['crop_shape']}
+            box_list, score_list = imgprocess(batch_shape, test_preds,
+                                              is_output_polygon=config['postprocess']['is_poly'])
+            raw_metric = metric_cls.validate_measure(test_batch, (box_list, score_list))
+            raw_metrics.append(raw_metric)
+    metrics = metric_cls.gather_measure(raw_metrics)
+    recall = metrics['recall'].avg
+    precision = metrics['precision'].avg
+    hmean = metrics['hmean'].avg
+    return recall, precision, hmean
 
 
 if __name__ == '__main__':

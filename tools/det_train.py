@@ -123,7 +123,7 @@ def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epo
             else:
                 loss_bin[key].loss_add(loss.item())
         iou, acc = cal_DB(pre_batch['binary'], gt_batch['gt'], gt_batch['mask'], running_metric_text)
-        if batch_idx % config['base']['show_step'] == 0:
+        if (batch_idx + 1) % config['base']['show_step'] == 0:
             log = '({}/{}/{}/{}) | ' \
                 .format(epoch, config['base']['n_epoch'], batch_idx, len(train_loader))
             bin_keys = list(loss_bin.keys())
@@ -143,6 +143,7 @@ def model_train(train_loader, model, criterion, optimizer, loss_bin, config, epo
 
 
 def model_eval(test_dataset, test_loader, model, imgprocess, checkpoint, config):
+
     for batch_idx, (imgs, ori_imgs) in enumerate(test_loader):
         if torch.cuda.is_available():
             imgs = imgs.cuda()

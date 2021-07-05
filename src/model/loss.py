@@ -92,3 +92,45 @@ class DBLoss(nn.Module):
         else:
             loss = bce_loss
         return loss, metrics
+
+
+class DBLossVer1(nn.Module):
+    def __init__(self, alpha=1., beta=10., reduction='mean', negative_ratio=3, eps=1e-6):
+        super().__init__()
+        self.alpha = alpha
+        self.beta = beta
+        self.reduction = reduction
+        self.negative_ratio = negative_ratio
+        self.eps = eps
+        self.ohem_loss = BalanceCrossEntropyLoss(negative_ratio, eps)
+        self.l1_loss = MaskL1Loss()
+        self.dice_loss = DiceLoss(eps)
+
+    def forward(self, preds, gts):
+        """
+        :param preds: probability map (Ls), binary map (Lb), threshold map (Lt)
+        :param gts: prob map, binary map
+        :return: prob_loss, threshold_loss, binary_loss, prob_threshold_loss, total_loss
+        total_loss = Ls + alpha * Lb + beta * Lt
+        """
+        assert preds.dim() == 4
+        assert gts.dim() == 4
+        prob_map = preds[:, 0, :, :]
+        threshold_map = preds[:, 1, :, :]
+        if preds.size(1) == 3:
+            appro_binary_map = preds[:, 2, :, :]
+        prob_gt_map = gts[0, :, :, :]
+        supervision_mask = gts[1, :, :, :]  # 0/1
+        threshold_gt_map = gts[2, :, :, :]  # 0.3/0.7
+        text_area_gt_map = gts[3, :, :, :]  # 0/1
+
+        # loss
+        prob_loss = self.ohem_loss(prob_map, prob_gt_map, supervision_mask)
+        threshold_loss = self.l1_loss(threshold_map, threshold_gt_map, text_area_gt_map)
+        prob_threshold_loss = prob_loss + self.beta * threshold_loss
+        if preds.size(1) == 3:
+            binary_loss = self.dice_loss(appro_binary_map, prob_gt_map, supervision_mask)
+            total_loss = prob_threshold_loss + self.alpha * binary_loss
+            return total_loss
+        else:
+            return prob_threshold_loss

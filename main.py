@@ -2,7 +2,7 @@ import yaml
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from src.loader.det_loader import DBLoaderTrain, DBLoaderTest
+from src.loader.det_loader import DBLoader
 from torch.utils.data import DataLoader
 import torch
 from src.utils.utils_function import create_module
@@ -12,19 +12,24 @@ from src.model.det_model.db_net import DBNetVer1
 if __name__ == '__main__':
     with open('config/db_resnet50.yaml', 'r') as stream:
         cfg = yaml.safe_load(stream)
-    """
-    train_dataset = DBLoaderTrain(cfg)
-    # test_dataset = DBLoaderTest(cfg)
+
+    train_dataset = DBLoader(cfg, img_dir=cfg['train_load']['train_img_dir'],
+                             label_dir=cfg['train_load']['train_label_dir'], is_training=True)
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=4)
     # samples = next(iter(train_dataset))
-    samples = train_dataset[25]
+    samples = train_dataset[28]
     img = samples[0]
 
     gt = samples[1]
     gt_mask = samples[2]
+
     thresh_map = samples[3]
     thresh_mask = samples[4]
-    
+    cv2.imshow('img', img)
+    cv2.imshow('gt', gt)
+    cv2.imshow('thresh map', thresh_map)
+    cv2.waitKey(0)
+    """
     polys = samples[1]
     ignore = samples[2]
     print(img.shape)
@@ -68,7 +73,3 @@ if __name__ == '__main__':
 
     plt.show()
     """
-    img = torch.randn(1, 3, 640, 640)
-    model = DBNetVer1(cfg)
-    out = model(img)
-    print(out.size())

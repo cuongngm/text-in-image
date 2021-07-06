@@ -97,66 +97,26 @@ def merge_config(config, args):
     return config
 
 
-class AverageMeter:
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.sum = 0
-        self.count = 0
-        self.avg = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val*n
-        self.count += n
-        self.avg = self.sum / self.count
-
-
-def resize_image(img, algorithm, side_len=736, stride=128):
-    if algorithm == 'DB' or algorithm == 'PAN' or algorithm == 'CRNN':
-        height, width, _ = img.shape
-        if height < width:
-            new_height = side_len
-            new_width = int(math.ceil(new_height / height * width / stride) * stride)
-        else:
-            new_width = side_len
-            new_height = int(math.ceil(new_width / width * height / stride) * stride)
-        resized_img = cv2.resize(img, (new_width, new_height))
-    else:
-        height, width, _ = img.shape
-        if height > width:
-            new_height = side_len
-            new_width = int(math.ceil(new_height / height * width / stride) * stride)
-        else:
-            new_width = side_len
-            new_height = int(math.ceil(new_width / width * height / stride) * stride)
-        resized_img = cv2.resize(img, (new_width, new_height))
-    return resized_img
+def resize(image, polys, ignore, size=640):
+    h, w, c = image.shape
+    scale_w = size / w
+    scale_h = size / h
+    scale = min(scale_w, scale_h)
+    h = int(h * scale)
+    w = int(w * scale)
+    padimg = np.zeros((size, size, c), image.dtype)
+    padimg[:h, :w] = cv2.resize(image, (w, h))
+    new_polys = []
+    for poly in polys:
+        poly = np.array(poly).astype(np.float64)
+        poly *= scale
+        poly = poly.tolist()
+        new_polys.append(poly)
+    return padimg, new_polys, ignore
 
 
-def resize_image_batch(img, side_len=1536, add_padding=True):
-    stride = 32
-    height, width, _ = img.shape
-    flag = None
-    if height > width:
-        flag = True
-        new_height = side_len
-        new_width = int(math.ceil(new_height / height * width / stride) * stride)
-    else:
-        flag = False
-        new_width = side_len
-        new_height = int(math.ceil(new_width / width * height / stride) * stride)
-    resized_img = cv2.resize(img, (new_width, new_height))
-    scale = (float(width)/new_width, float(height)/new_height)
-    if add_padding is True:
-        if flag:
-            padded_image = cv2.copyMakeBorder(resized_img, 0, 0,
-                          0, side_len-new_width, cv2.BORDER_CONSTANT, value=(0, 0, 0))
-        else:
-            padded_image = cv2.copyMakeBorder(resized_img, 0, side_len-new_height,
-                          0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
-    else:
-        return resized_img, scale
-    return padded_image, scale
+def dict_to_device(batch, device='cuda'):
+    for k, v in batch.items():
+        if isinstance(v, torch.Tensor):
+            batch[k] = v.to(device)
+    return batch

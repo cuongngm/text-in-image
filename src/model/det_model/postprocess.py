@@ -209,12 +209,13 @@ class DBPostProcess(object):
 
 # postprocessing
 class DBPostProcessVer1:
-    def __init__(self, thresh=0.3, box_thresh=0.5, max_candidates=1000, unclip_ratio=1.5):
-        self.min_size = 3
-        self.thresh = thresh
-        self.box_thresh = box_thresh
-        self.max_candidates = max_candidates
-        self.unclip_ratio = unclip_ratio
+    def __init__(self, config):
+        self.thresh = config['postprocess']['thresh']
+        self.box_thresh = config['postprocess']['box_thresh']
+        self.max_candidates = config['postprocess']['max_candidates']
+        self.is_poly = config['postprocess']['is_poly']
+        self.unclip_ratio = config['postprocess']['unclip_ratio']
+        self.min_size = config['postprocess']['min_size']
 
     def __call__(self, batch, pred, is_output_polygon=False):
         """

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class DiceLoss(nn.Module):
@@ -42,7 +43,7 @@ class BalanceCrossEntropyLoss(nn.Module):
         positive_count = int(positive.float().sum())
         negative_count = min(int(negative.float().sum()),
                             int(positive_count * self.negative_ratio))
-        loss = nn.functional.binary_cross_entropy(
+        loss = F.binary_cross_entropy(
             pred, gt, reduction='none')
         positive_loss = loss * positive.float()
         negative_loss = loss * negative.float()
@@ -61,10 +62,10 @@ class MaskL1Loss(nn.Module):
                 mask: torch.Tensor):
         mask_sum = mask.sum()
         if mask_sum.item() == 0:
-            return mask_sum, dict(l1_loss=mask_sum)
+            return mask_sum
         else:
             loss = (torch.abs(pred - gt) * mask).sum() / mask_sum
-            return loss, dict(loss_l1=loss)
+            return loss
 
 
 class DBLoss(nn.Module):

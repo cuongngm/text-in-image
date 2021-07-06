@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 import sys
 sys.path.append('./')
-from src.utils.utils_function import create_dir, create_module, save_checkpoint
+from src.utils.utils_function import create_dir, create_module, save_checkpoint, dict_to_device
 from src.utils.logger import Logger
 from src.utils.metrics import runningScore, cal_text_score, QuadMetric
 warnings.filterwarnings('ignore')
@@ -24,8 +24,10 @@ def train_val_program(args):
 
     model = create_module(config['model']['function'])(config)
     criterion = create_module(config['model']['loss_function'])(config)
-    train_dataset = create_module(config['train_load']['function'])(config)
-    val_dataset = create_module(config['val_load']['function'])(config)
+    train_dataset = create_module(config['train_load']['function'])(config, config['train_load']['train_img_dir'],
+                                                                    config['train_load']['train_label_dir'], is_training=True)
+    val_dataset = create_module(config['train_load']['function'])(config, config['val_load']['val_img_dir'],
+                                                                  config['val_load']['val_label_dir'], is_training=False)
     optimizer = create_module(config['optimizer']['function'])(config, model.parameters())
     optimizer_decay = create_module(config['optimizer_decay']['function'])
     img_process = create_module(config['postprocess']['function'])(config)
@@ -60,7 +62,7 @@ def train_val_program(args):
         model.train()
         optimizer_decay(config, optimizer, epoch)
         train_loss = model_train(train_loader, model, criterion, optimizer, config, epoch)
-        print('Train loss:', train_loss)
+        print('Train loss:', train_loss.item())
         model.eval()
         recall, precision, hmean = model_eval(val_loader, model, img_process, config, metric_cls)
         print('Recall:{}, precision:{}, hmean:{}'.format(recall, precision, hmean))
@@ -86,20 +88,21 @@ def model_train(train_loader, model, criterion, optimizer, config, epoch):
     train_loss = 0
     for batch_idx, data in enumerate(train_loader):
         lr = optimizer.param_groups[0]['lr']
-        preds = model(data[0])
+        data = dict_to_device(data)
+        preds = model(data['img'])
         assert preds.size(1) == 3
-        _batch = torch.stack([data[1], data[2], data[3], data[4]])
+        _batch = torch.stack([data['gt'], data['gt_mask'], data['thresh_map'], data['thresh_mask']])
         total_loss = criterion(preds, _batch)
         optimizer.zero_grad()
         total_loss.backward()
         optimizer.step()
         score_shrink_map = cal_text_score(preds[:, 0, :, :],
-                                          data[1], data[2], running_metric_text, thresh=0.3)
+                                          data['gt'], data['gt_mask'], running_metric_text, thresh=0.3)
         acc = score_shrink_map['Mean Acc']
         iou_shrink_map = score_shrink_map['Mean IoU']
         train_loss += total_loss
         if batch_idx % config['base']['show_step'] == 0:
-            print('Epoch:{} - Step:{} - lr:{} - loss:{} - acc:{} - iou:{}'.format(epoch+1, batch_idx, lr, total_loss,
+            print('Epoch:{} - Step:{} - lr:{} - loss:{} - acc:{} - iou:{}'.format(epoch, batch_idx, lr, total_loss,
                                                                               acc, iou_shrink_map))
     end_epoch_loss = train_loss / len(train_loader)
     return end_epoch_loss
@@ -107,11 +110,12 @@ def model_train(train_loader, model, criterion, optimizer, config, epoch):
 
 def model_eval(test_loader, model, imgprocess, config, metric_cls):
     raw_metrics = []
-    for idx, test_batch in tqdm(enumerate(test_loader)):
+    for idx, test_batch in tqdm(enumerate(test_loader), total=len(test_loader)):
         with torch.no_grad():
-            test_preds = model(test_batch[0])
+            test_data = dict_to_device(test_data)
+            test_preds = model(test_data['img'])
             assert test_preds.size(1) == 2
-            batch_shape = {'shape': config['base']['crop_shape']}
+            batch_shape = {'shape': [(736, 736)]}
             box_list, score_list = imgprocess(batch_shape, test_preds,
                                               is_output_polygon=config['postprocess']['is_poly'])
             raw_metric = metric_cls.validate_measure(test_batch, (box_list, score_list))
@@ -119,7 +123,7 @@ def model_eval(test_loader, model, imgprocess, config, metric_cls):
     metrics = metric_cls.gather_measure(raw_metrics)
     recall = metrics['recall'].avg
     precision = metrics['precision'].avg
-    hmean = metrics['hmean'].avg
+    hmean = metrics['fmeasure'].avg
     return recall, precision, hmean
 
 

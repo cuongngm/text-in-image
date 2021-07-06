@@ -2,6 +2,8 @@
 # https://github.com/wkentaro/pytorch-fcn/blob/master/torchfcn/utils.py
 
 import numpy as np
+from collections import namedtuple
+from shapely.geometry import Polygon
 
 
 class runningScore(object):
@@ -70,6 +72,16 @@ def cal_text_score(texts, gt_texts, training_masks,
     running_metric_text.update(gt_text, pred_text)
     score_text, _ = running_metric_text.get_scores()
     return score_text
+
+
+def to_list_tuples_coords(anns):
+    new_anns = []
+    for ann in anns:
+        points = []
+        for x, y in ann:
+            points.append((x[0].tolist(), y[0].tolist()))
+            new_anns.append(points)
+    return new_anns
 
 
 class DetectionIoUEvaluator(object):
@@ -311,8 +323,8 @@ class QuadMetric:
         results = []
         pred_polygons_batch = np.array(output[0])
         pred_scores_batch = np.array(output[1])
-        gt_polygons_batch = to_list_tuples_coords(batch['anns'])
-        ignore_tags_batch = [i[0].tolist() for i in batch['ignore_tags']]
+        gt_polygons_batch = to_list_tuples_coords(batch['polys'])
+        ignore_tags_batch = [i[0].tolist() for i in batch['ignore']]
         gt = []
         for gt_polygon, ignore_tag in zip(gt_polygons_batch, ignore_tags_batch):
             gt.append({'points': gt_polygon, 'ignore': ignore_tag})

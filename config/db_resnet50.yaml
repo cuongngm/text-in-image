@@ -1,5 +1,5 @@
 base:
-  algorithm: DB
+  algorithm: 'DB'
   crop_shape: [736, 736]
   pretrained: True
   in_channels: [256, 512, 1024, 2048]
@@ -16,8 +16,8 @@ base:
   dataset: 'ICDAR'
 train_load:
   function: src.loader.det_loader,DBLoaderTrain
-  train_img_dir: 'dataset/ICDAR2015/train/img'
-  train_label_dir: 'dataset/ICDAR2015/train/gt'
+  train_img_dir: 'dataset/vietnamese/train/img'
+  train_label_dir: 'dataset/vietnamese/train/gt'
   batch_size: 8
   num_workers: 4
 val_load:

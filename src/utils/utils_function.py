@@ -110,7 +110,8 @@ def resize(image, polys, ignore, size=640):
     for poly in polys:
         poly = np.array(poly).astype(np.float64)
         poly *= scale
-        poly = poly.tolist()
+        poly = poly.reshape(-1, 2).tolist()
+        # poly = poly.tolist()
         new_polys.append(poly)
     return padimg, new_polys, ignore
 

@@ -92,6 +92,8 @@ class DBLoader(Dataset):
             return data
         else:
             img, polys, ignore = resize(img, polys, tags, size=self.crop_shape[0])
+            img = Image.fromarray(img).convert('RGB')
+            img = self.aug.normalize_img(img)
             data = {
                 'img': img,
                 'polys': polys,
@@ -120,8 +122,7 @@ class DBTest(Dataset):
 
     def __getitem__(self, index):
         ori_img = cv2.imread(self.img_list[index])
-        img = resize_image(ori_img, self.config['base']['algorithm'], self.test_size,
-                           stride=self.config['val_load']['stride'])
+        img = resize(ori_img, self.config['base']['algorithm'], self.test_size)
         img = Image.fromarray(img).convert('RGB')
         img = self.TSM.normalize_img(img)
         return img, ori_img

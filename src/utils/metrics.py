@@ -80,7 +80,7 @@ def to_list_tuples_coords(anns):
         points = []
         for x, y in ann:
             points.append((x[0].tolist(), y[0].tolist()))
-            new_anns.append(points)
+        new_anns.append(points)
     return new_anns
 
 

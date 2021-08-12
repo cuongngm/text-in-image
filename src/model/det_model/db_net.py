@@ -14,36 +14,6 @@ class DBNet(nn.Module):
                                                                 config['base']['k'],
                                                                 config['base']['adaptive'])
 
-    def forward(self, data):
-        if self.training:
-            img, gt, gt_mask, thresh_map, thresh_mask = data
-            if torch.cuda.is_available():
-                img, gt, gt_mask, thresh_map, thresh_mask = img.cuda(), gt.cuda(), gt_mask.cuda(),\
-                                                        thresh_map.cuda(), thresh_mask.cuda()
-            gt_batch = dict(gt=gt)  # = gt_batch['gt'] = gt
-            gt_batch['mask'] = gt_mask
-            gt_batch['thresh_map'] = thresh_map
-            gt_batch['thresh_mask'] = thresh_mask
-        else:
-            img = data
-        x = self.backbone(img)
-        x = self.head(x)
-        x = self.seg_out(x, img)
-        if self.training:
-            return x, gt_batch
-        return x
-
-
-class DBNetVer1(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.backbone = create_module(config['model']['backbone'])(config['base']['pretrained'])
-        self.head = create_module(config['model']['head'])(config['base']['in_channels'],
-                                                           config['base']['inner_channels'])
-        self.seg_out = create_module(config['model']['segout'])(config['base']['inner_channels'],
-                                                                config['base']['k'],
-                                                                config['base']['adaptive'])
-
     def forward(self, x):
         """
                 :return: Train mode: prob_map, threshold_map, appro_binary_map

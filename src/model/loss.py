@@ -69,33 +69,6 @@ class MaskL1Loss(nn.Module):
 
 
 class DBLoss(nn.Module):
-    def __init__(self, l1_scale=10, bce_scale=1, eps=1e-6):
-        super().__init__()
-        self.bce_loss = BalanceCrossEntropyLoss()
-        self.dice_loss = DiceLoss(eps)
-        self.l1_loss = MaskL1Loss()
-        self.l1_scale = l1_scale
-        self.bce_scale = bce_scale
-
-    def forward(self, pred_batch, gt_batch):
-        bce_loss = self.bce_loss(pred_batch['binary'][:, 0],
-                                 gt_batch['gt'], gt_batch['mask'])
-        metrics = dict(loss_bce=bce_loss)
-        if 'thresh' in pred_batch:
-            l1_loss, l1_metric = self.l1_loss(pred_batch['thresh'][:, 0],
-                                              gt_batch['thresh_map'],
-                                              gt_batch['thresh_mask'])
-            dice_loss = self.dice_loss(pred_batch['thresh_binary'][:, 0],
-                                       gt_batch['gt'], gt_batch['mask'])
-            metrics['loss_thresh'] = dice_loss
-            loss = dice_loss + self.l1_scale * l1_loss + self.bce_scale * bce_loss
-            metrics.update(**l1_metric)
-        else:
-            loss = bce_loss
-        return loss, metrics
-
-
-class DBLossVer1(nn.Module):
     def __init__(self, alpha=1., beta=10., reduction='mean', negative_ratio=3, eps=1e-6):
         super().__init__()
         self.alpha = alpha

@@ -15,27 +15,27 @@ base:
   restore_file: 'checkpoint/current.pth'
   dataset: 'ICDAR'
 train_load:
-  function: src.loader.det_loader,DBLoaderTrain
-  train_img_dir: 'dataset/vietnamese/train/img'
-  train_label_dir: 'dataset/vietnamese/train/gt'
-  batch_size: 8
+  function: src.loader.det_loader,DBLoader
+  train_img_dir: '/data/cuongnm1/dataset/vietnamese/train/img'
+  train_label_dir: '/data/cuongnm1/dataset/vietnamese/train/gt'
+  batch_size: 4
   num_workers: 4
 val_load:
-  function: src.loader.det_loader,DBLoaderTest
-  val_img_dir: 'dataset/vietnamese/test/img'
-  val_label_dir: 'dataset/vietnamese/test/gt'
+  function: src.loader.det_loader,DBTest
+  val_img_dir: '/data/cuongnm1/dataset/vietnamese/test/img'
+  val_label_dir: '/data/cuongnm1/dataset/vietnamese/test/gt'
   batch_size: 1
   num_workers: 4
   test_size: 736
   stride: 32
 model:
-  function: src.model.det_model.db_net,DBNetVer1
+  function: src.model.det_model.db_net,DBNet
   loss_function: src.model.det_model.db_net,DetLoss
   backbone: src.model.backbone.resnet_dcn,resnet50
-  head: src.model.det_model.head,DBHeadVer1
-  segout: src.model.det_model.segout,SegDetectorVer1
+  head: src.model.det_model.head,DBHead
+  segout: src.model.det_model.segout,SegDetector
 loss:
-  function: src.model.loss,DBLossVer1
+  function: src.model.loss,DBLoss
   l1_scale: 1
   bce_scale: 10
 optimizer:
@@ -47,7 +47,7 @@ optimizer_decay:
   function: src.model.optimizer,adjust_learning_rate_poly
   factor: 0.9
 postprocess:
-  function: src.model.det_model.postprocess,DBPostProcessVer1
+  function: src.model.det_model.postprocess,DBPostProcess
   thresh: 0.3
   box_thresh: 0.5
   max_candidates: 1000

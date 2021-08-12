@@ -11,12 +11,11 @@ from src.utils.utils_function import resize
 
 
 class DBLoader(Dataset):
-    def __init__(self, config, is_training=True):
+    def __init__(self, config, img_dir, label_dir, is_training=True):
         super().__init__()
         self.crop_shape = config['base']['crop_shape']
         self.dataset_name = config['base']['dataset']
-        self.img_list, self.label_list = self.get_base_info(config['train_load']['train_img_dir'],
-                                                            config['train_load']['train_label_dir'])
+        self.img_list, self.label_list = self.get_base_info(img_dir, label_dir)
         self.is_training = is_training
         self.aug = DetAugment(self.crop_shape)
         self.MSM = MakeSegMap()

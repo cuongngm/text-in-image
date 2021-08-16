@@ -19,7 +19,19 @@ model_arch:
     use_gcb: [False, True, True, True]
   common:
     with_encoder: False
-    n_class: 36
+    tgt_vocab: 36
+    d_model: 512
+    nhead: 8
+  encoder:
+    num_layer: 3
+    dropout: 0.2
+    ff_dim: 2048
+    share_parameter: False
+  decoder:
+    num_layer: 3
+    dropout: 0.2
+    ff_dim: 2048
+    share_parameter: False
 functional:
   conv_embedding_gc: src.model.backbone.resnet,ConvEmbeddingGC
   encoder: src.model.reg_model.transformer,Encoder

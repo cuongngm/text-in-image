@@ -19,7 +19,7 @@ class MultiInputSequential(nn.Sequential):
             if m_module_index == 0:
                 m_input = m_module(*inputs)
             else:
-                m_input = m_module(m_module)
+                m_input = m_module(m_input)
         return m_input
 
 
@@ -27,17 +27,30 @@ class MASTER(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.with_encoder = config['model_arch']['common']['with_encoder']
-        self.build_model(config)
+
         for m_parameter in self.parameters():
             if m_parameter.dim() > 1:
                 nn.init.xavier_uniform_(m_parameter)
 
-        self.conv_embedding_gc = create_module(config['functional']['conv_embedding_gc'])(config)
-        self.encoder = create_module(config['functional']['encoder'])(config)
+        self.conv_embedding_gc = create_module(
+            config['functional']['conv_embedding_gc'])(config)
+        self.encoder = create_module(config['functional']['encoder'])(config['model_arch']['common']['with_encoder'],
+                                                                      config['model_arch']['common']['nhead'],
+                                                                      config['model_arch']['common']['d_model'],
+                                                                      config['model_arch']['encoder']['num_layer'],
+                                                                      config['model_arch']['encoder']['dropout'],
+                                                                      config['model_arch']['encoder']['ff_dim'],
+                                                                      config['model_arch']['encoder']['share_parameter'])
         self.encode_stage = nn.Sequential(self.conv_embedding_gc, self.encoder)
 
-        self.decoder = create_module(config['functional']['decoder'])(config)
-        self.generator = create_module(config['functional']['generator'])(config)
+        self.decoder = create_module(config['functional']['decoder'])(config['model_arch']['common']['nhead'],
+                                                                      config['model_arch']['common']['d_model'],
+                                                                      config['model_arch']['decoder']['num_layer'],
+                                                                      config['model_arch']['decoder']['dropout'],
+                                                                      config['model_arch']['decoder']['ff_dim'],
+                                                                      config['model_arch']['common']['tgt_vocab'])
+        self.generator = create_module(config['functional']['generator'])(config['model_arch']['common']['d_model'],
+                                                                          config['model_arch']['common']['tgt_vocab'])
         self.decode_stage = MultiInputSequential(self.decoder, self.generator)
 
     def eval(self):

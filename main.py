@@ -2,6 +2,7 @@ import yaml
 from src.loader.det_loader import DBLoader
 from torch.utils.data import DataLoader
 import torch
+from src.model.reg_model.master import MASTER
 from src.model.backbone.resnet import ConvEmbeddingGC
 
 
@@ -73,9 +74,12 @@ def test_detect():
 
 
 if __name__ == '__main__':
-    img = torch.randn(4, 1, 48, 160)
+    img = torch.zeros((4, 1, 48, 160), dtype=torch.float32)
+    label = torch.zeros((4, 36), dtype=torch.long)
     with open('config/master.yaml', 'r') as stream:
         cfg = yaml.safe_load(stream)
-    model = ConvEmbeddingGC(gcb_config=cfg)
-    output = model(img)
-    print(output.size())
+    model = MASTER(cfg)
+    encode_result = model.encode_stage(img)  # [4, H/4 * W/8, d_model]
+    # result = model(img)
+    decode_result = model.decode_stage(label, encode_result)
+    print(decode_result.size())

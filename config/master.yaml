@@ -1,0 +1,28 @@
+dataset:
+  img_w: 256
+  img_h: 32
+  case_sensitive: False
+  to_gray: False
+  transform: None
+  target_transform: None
+  txt_file: '/data/cuongnm1/dataset/..'
+  img_root: '/data/cuongnm1/dataset/..'
+model_arch:
+  gcb:
+    in_channels: 32
+    ratio: 0.0625
+    headers: 8
+    pooling_type: 'att'
+    att_scale: True
+    fusion_type: 'channel_concat'
+  backbone:
+    use_gcb: [False, True, True, True]
+  common:
+    with_encoder: False
+    n_class: 36
+functional:
+  conv_embedding_gc: src.model.backbone.resnet,ConvEmbeddingGC
+  encoder: src.model.reg_model.transformer,Encoder
+  decoder: src.model.reg_model.transformer,Decoder
+  generator: src.model.reg_model.master,Generator
+  master: src.model.reg_model.master,MASTER

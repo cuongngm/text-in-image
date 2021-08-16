@@ -1,15 +1,11 @@
 import yaml
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
 from src.loader.det_loader import DBLoader
 from torch.utils.data import DataLoader
 import torch
-from src.utils.utils_function import create_module
-from src.model.det_model.db_net import DBNetVer1
+from src.model.backbone.resnet import ConvEmbeddingGC
 
 
-if __name__ == '__main__':
+def test_detect():
     with open('config/db_resnet50.yaml', 'r') as stream:
         cfg = yaml.safe_load(stream)
 
@@ -29,7 +25,7 @@ if __name__ == '__main__':
     cv2.imshow('gt', gt)
     cv2.imshow('thresh map', thresh_map)
     cv2.waitKey(0)
-    """
+    
     print(samples['img'])
     polys = samples['polys']
     ignore = samples['ignore']
@@ -39,7 +35,7 @@ if __name__ == '__main__':
         img = cv2.polylines(img, np.int32([poly]), isClosed=True, color=(255, 0, 0), thickness=2)
     plt.imshow(img)
     plt.show()
-    """
+    
     fig = plt.figure(figsize=(10, 10))
     rows = 2
     columns = 2
@@ -74,3 +70,12 @@ if __name__ == '__main__':
 
     plt.show()
     """
+
+
+if __name__ == '__main__':
+    img = torch.randn(4, 1, 48, 160)
+    with open('config/master.yaml', 'r') as stream:
+        cfg = yaml.safe_load(stream)
+    model = ConvEmbeddingGC(gcb_config=cfg)
+    output = model(img)
+    print(output.size())

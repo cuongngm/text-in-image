@@ -68,3 +68,35 @@ class MASTER(nn.Module):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
         return params
+
+
+def predict(memory, src, decode_stage, max_length, sos_symbol, eos_symbol, padding_symbol):
+    batch_size = src.size()
+    device = src.device
+    to_return_label = torch.ones((batch_size, max_length + 2), dtype=torch.long).to(device) * padding_symbol
+    prob = torch.ones((batch_size, max_length + 2), dtype=torch.float32).to(device)
+    to_return_label[:, 0] = sos_symbol
+    for i in range(max_length + 1):
+        m_label = decode_stage(to_return_label, memory)
+        m_prob = torch.softmax(m_label, dim=-1)
+        m_max_probs, m_next_word = torch.max(m_prob, dim=-1)
+        to_return_label[:, i + 1] = m_next_word[:, i]
+        prob[:, i + 1] = m_max_probs[:, i]
+    eos_position_y, eos_position_x = torch.nonzero(to_return_label == eos_symbol, as_tuple=True)
+    if len(eos_position_y) > 0:
+        eos_position_y_index = eos_position_y[0]
+        for m_position_y, m_position_x in zip(eos_position_y, eos_position_x):
+            if eos_position_y_index == m_position_y:
+                to_return_label[m_position_y, m_position_x + 1:] = padding_symbol
+                prob[m_position_y, m_position_x + 1:] = 1
+                eos_position_y_index += 1
+    return to_return_label, prob
+
+
+def greedy_decode_with_probability(model, input_tensor, max_seq_len, sos_symbol_idx, eos_symbol_idx,
+                                   pad_symbol_idx=None, result_device='cpu', is_padding=False):
+    memory = model.encode_stage(input_tensor)
+    predicted_label, predicted_label_prob = predict(memory, input_tensor, model.decode_stage,
+                                                    max_seq_len, sos_symbol_idx, eos_symbol_idx,
+                                                    pad_symbol_idx)
+    return predicted_label, predicted_label_prob

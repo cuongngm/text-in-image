@@ -1,10 +1,13 @@
 import os
+import cv2
+import numpy as np
 from PIL import Image
+import torch
 from torch.utils.data import Dataset, ConcatDataset
 
 
 class TextDataset(Dataset):
-    def __init__(self, config, training=True):
+    def __init__(self, config, img_dir, label_dir, training=True):
         self.img_w = config['dataset']['img_w']
         self.img_h = config['dataset']['img_h']
         self.training = training
@@ -16,7 +19,7 @@ class TextDataset(Dataset):
         self.all_labels = []
 
         if training:
-            images, labels = self.get_base_info(config['dataset']['txt_file'], config['dataset']['img_root'])
+            images, labels = self.get_base_info(img_dir, label_dir)
             self.all_images += images
             self.all_labels += labels
         else:
@@ -24,7 +27,7 @@ class TextDataset(Dataset):
             for img in imgs:
                 self.all_images.append(os.path.join(config['dataset']['img_root'], img))
 
-    def get_base_info(self, txt_file, img_root):
+    def get_base_info(self, img_root, txt_file):
         image_names = []
         labels = []
         with open(txt_file, encoding='utf-8') as f:
@@ -67,3 +70,46 @@ class TextDataset(Dataset):
             return img, label
         else:
             return img, file_name
+
+
+class DistCollateFn:
+    def __init__(self, training=True):
+        self.training = training
+
+    def __call__(self, batch):
+        batch_size = len(batch)
+        if batch_size == 0:
+            return dict(batch_size=batch_size, images=None, labels=None)
+
+        if self.training:
+            images, labels = zip(*batch)
+            image_batch_tensor = torch.stack(images, dim=0).float()
+            # images Tensor: (bs, c, h, w), file_names tuple: (bs,)
+            return dict(batch_size=batch_size,
+                        images=image_batch_tensor,
+                        labels=labels)
+        else:
+            images, file_names = zip(*batch)
+            image_batch_tensor = torch.stack(images, dim=0).float()
+            # images Tensor: (bs, c, h, w), file_names tuple: (bs,)
+            return dict(batch_size=batch_size,
+                        images=image_batch_tensor,
+                        file_names=file_names)
+
+
+class Resize:
+    def __init__(self, new_h, new_w, is_gray=True):
+        self.new_h = new_h
+        self.new_w = new_w
+        self.is_gray = is_gray
+
+    def __call__(self, img:Image.Image):
+        if self.is_gray:
+            img = img.convert('L')
+        img = np.array(img)
+        h, w = img.shape[:2]
+        resize_img = cv2.resize(img, (self.new_w, self.new_h))
+        full_channel_img = resize_img[..., None] if len(resize_img.shape) == 2 else resize_img
+        resize_img_tensor = torch.from_numpy(np.transpose(full_channel_img, (2, 0, 1))).to(torch.float32)
+        resize_img_tensor.sub_(127.5).div_(127.5)
+        return resize_img_tensor, w/self.new_w

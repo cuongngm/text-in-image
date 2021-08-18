@@ -3,9 +3,10 @@ dataset:
   img_h: 32
   case_sensitive: False
   to_gray: False
-  transform: None
+  transform: 'Resize'
   target_transform: None
-  txt_file: '/data/cuongnm1/dataset/..'
+  train_txt_file: '/data/cuongnm1/dataset/..'
+  val_txt_file: 'data/cuongnm1/dataset/..'
   img_root: '/data/cuongnm1/dataset/..'
 model_arch:
   gcb:
@@ -33,8 +34,39 @@ model_arch:
     ff_dim: 2048
     share_parameter: False
 functional:
+  load_data: src.loader.reg_loader,TextDataset
   conv_embedding_gc: src.model.backbone.resnet,ConvEmbeddingGC
   encoder: src.model.reg_model.transformer,Encoder
   decoder: src.model.reg_model.transformer,Decoder
   generator: src.model.reg_model.master,Generator
   master: src.model.reg_model.master,MASTER
+train_loader:
+  batch_size: 32
+  shuffle: True
+  drop_last: True
+  num_workers: 8
+val_loader:
+  batch_size: 32
+  shuffle: False
+  drop_last: False
+  num_workers: -1
+optimizer:
+  type: 'Adam'
+  functional: src.model.optimizer,Adam
+  lr: 0.0004
+lr_scheduler:
+  type: 'StepLR'
+  step_size: 30
+  gamma: 0.1
+trainer:
+  epochs: 100
+  do_validation: True
+  log_step_interval: 1
+  val_step_interval: 2000
+  save_dir: 'saved'
+  monitor: 'max_word_acc'
+  distributed: True
+  local_world_size: 4
+  local_rank: -1
+  global_rank: -1
+

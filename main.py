@@ -82,4 +82,5 @@ if __name__ == '__main__':
     encode_result = model.encode_stage(img)  # [4, H/4 * W/8, d_model]
     # result = model(img)
     decode_result = model.decode_stage(label, encode_result)
-    print(decode_result.size())
+    print(decode_result.size())  # [B, num_class, num_class]
+

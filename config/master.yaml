@@ -61,6 +61,7 @@ lr_scheduler:
 trainer:
   epochs: 100
   do_validation: True
+  validation_epoch: 10
   log_step_interval: 1
   val_step_interval: 2000
   save_dir: 'saved'
@@ -69,4 +70,7 @@ trainer:
   local_world_size: 4
   local_rank: -1
   global_rank: -1
+  early_stop: -1
+  resume: False
+  resume_path: ''
 

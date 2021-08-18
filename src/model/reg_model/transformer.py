@@ -116,7 +116,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, nhead, d_model, num_layer, dropout, ff_dim, n_class, padding_symbol=0, share_parameter=True):
+    def __init__(self, nhead, d_model, num_layer, dropout, ff_dim, n_class, padding_symbol=0, share_parameter=False):
         super().__init__()
         self.share_parameter = share_parameter
         self.attention = nn.ModuleList([
@@ -133,7 +133,7 @@ class Decoder(nn.Module):
         ])
         self.position = PositionalEncoding(d_model, dropout)
         self.num_layer = num_layer
-        self.dropout = dropout
+        self.dropout = nn.Dropout(dropout)
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
         self.embedding = nn.Embedding(n_class, d_model)
         self.padding_symbol = padding_symbol

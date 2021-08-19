@@ -5,7 +5,7 @@ import torch.nn.functional as f
 
 
 class MultiAspectGCAttention(nn.Module):
-    def __init__(self, inplanes, ratio, headers, pooling_type='att', att_scale=False,
+    def __init__(self, inplanes, ratio=0.0625, headers=8, pooling_type='att', att_scale=False,
                  fusion_type='channel_concat'):
         super().__init__()
         assert pooling_type in ['avg', 'att']

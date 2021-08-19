@@ -2,7 +2,7 @@ import math
 import torch
 import torch.utils.model_zoo as model_zoo
 import torch.nn as nn
-from src.model.backbone.context_block import MultiAspectGCAttention
+from src.model.common.context_block import MultiAspectGCAttention
 
 
 def conv3x3(in_channels, out_channels, stride=1):
@@ -160,24 +160,24 @@ class ResnetMaster(nn.Module):
         self.max_pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
         self.layer1 = self.make_layer(block, 256, layers[0], stride=1,
-                                      use_gcb=gcb_config['model_arch']['backbone']['use_gcb'][0])
+                                      use_gcb=gcb_config['model_arch']['common']['use_gcb'][0])
         self.conv3 = nn.Conv2d(256, 256, 3, 1, 1, bias=False)
         self.bn3 = nn.BatchNorm2d(256)
         self.max_pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
 
         self.layer2 = self.make_layer(block, 256, layers[1], stride=1,
-                                      use_gcb=gcb_config['model_arch']['backbone']['use_gcb'][1])
+                                      use_gcb=gcb_config['model_arch']['common']['use_gcb'][1])
         self.conv4 = nn.Conv2d(256, 256, 3, 1, 1, bias=False)
         self.bn4 = nn.BatchNorm2d(256)
         self.max_pool4 = nn.MaxPool2d(kernel_size=(2, 1), stride=(2, 1))
 
         self.layer3 = self.make_layer(block, 512, layers[2], stride=1,
-                                      use_gcb=gcb_config['model_arch']['backbone']['use_gcb'][2])
+                                      use_gcb=gcb_config['model_arch']['common']['use_gcb'][2])
         self.conv5 = nn.Conv2d(512, 512, 3, 1, 1, bias=False)
         self.bn5 = nn.BatchNorm2d(512)
 
         self.layer4 = self.make_layer(block, 512, layers[3], stride=1,
-                                      use_gcb=gcb_config['model_arch']['backbone']['use_gcb'][3])
+                                      use_gcb=gcb_config['model_arch']['common']['use_gcb'][3])
         self.conv6 = nn.Conv2d(512, 512, 3, 1, 1, bias=False)
         self.bn6 = nn.BatchNorm2d(512)
 

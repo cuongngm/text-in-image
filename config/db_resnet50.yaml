@@ -29,11 +29,11 @@ val_load:
   test_size: 736
   stride: 32
 model:
-  function: src.model.det_model.db_net,DBNet
-  loss_function: src.model.det_model.db_net,DetLoss
-  backbone: src.model.backbone.resnet_dcn,resnet50
-  head: src.model.det_model.head,DBHead
-  segout: src.model.det_model.segout,SegDetector
+  function: src.model.detection.db_net,DBNet
+  loss_function: src.model.detection.db_net,DetLoss
+  backbone: src.model.common.resnet_dcn,resnet50
+  head: src.model.detection.head,DBHead
+  segout: src.model.detection.segout,SegDetector
 loss:
   function: src.model.loss,DBLoss
   l1_scale: 1
@@ -47,7 +47,7 @@ optimizer_decay:
   function: src.model.optimizer,adjust_learning_rate_poly
   factor: 0.9
 postprocess:
-  function: src.model.det_model.postprocess,DBPostProcess
+  function: src.model.detection.postprocess,DBPostProcess
   thresh: 0.3
   box_thresh: 0.5
   max_candidates: 1000

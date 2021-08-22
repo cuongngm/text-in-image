@@ -1,5 +1,6 @@
 from typing import *
 import math
+
 import torch
 import torch.nn as nn
 from torchvision.ops import roi_pool, roi_align
@@ -38,23 +39,11 @@ class Encoder(nn.Module):
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0).unsqueeze(0)
         self.register_buffer('pe', pe)
->>>>>>> 8325ff1fa00fa5a6f103b446937a4c0593d62817
 
     def forward(self, images: torch.Tensor, boxes_coordinate: torch.Tensor,
                 transcripts: torch.Tensor, src_key_padding_mask: torch.Tensor):
         """
         images: [B, C, H, W]
-<<<<<<< HEAD
-        boxes_coordinate: [B, N, 8]
-        transcripts: [B, N, T, D]
-        src_key_padding_mask:
-        """
-        b, n, t, d = transcripts.shape
-        _, _, h_origin, w_origin = images.shape  # [B, C, H, W]
-        images = self.cnn(images)
-        _, c, h, w = images.shape  # [B, image_features_dim, H/16, W/16]
-        rois_batch = torch.zeros(b, n, 5, device=images.device)
-=======
         boxes: [B, N, 8]
         transcripts: [B, N, T, D]
         src_key_padding_mask: []
@@ -65,32 +54,11 @@ class Encoder(nn.Module):
         _, c, h, w = images.shape
         spatial_scale = h / h_origin
         rois_batch = torch.zeros(b, n, 5)  # 5 means [batch_idx, xmin, ymin, xmax, ymax]
->>>>>>> 8325ff1fa00fa5a6f103b446937a4c0593d62817
         for i in range(b):
             doc_boxes = boxes_coordinate[i]
             pos = torch.stack([doc_boxes[:, 0], doc_boxes[:, 1], doc_boxes[:, 4], doc_boxes[:, 5]], dim=1)
             rois_batch[i, :, 1:5] = pos
             rois_batch[i, :, 0] = i
-<<<<<<< HEAD
-        spatial_scale = float(h / h_origin)
-        if self.roi_pooling_mode == 'roi_align':
-            image_segments = roi_align(images, rois_batch.view(-1, 5), self.roi_pooling_size, spatial_scale)
-        else:
-            image_segments = roi_pool(images, rois_batch.view(-1, 5), self.roi_pooling_size, spatial_scale)
-        # image segments: [B * N, C, roi_pooling_size, roi_pooling_size]
-        image_segments = self.relu(self.bn(self.conv(image_segments)))  # (B*N, D, 1, 1)
-        image_segments = image_segments.squeeze()
-        transcripts_segments = transcripts + self.pe[:, :, :transcripts.size(2), :]
-        transcripts_segments = self.dropout(transcripts_segments)
-        transcripts_segments = transcripts_segments.reshape(b * n, t, d)
-        transcripts_segments = self.transformer_encoder(transcripts_segments, src_key_padding_mask)
-
-        image_segments = image_segments.expand_as(transcripts_segments)
-        out = image_segments + transcripts_segments
-
-        out = self.norm(out)
-        out = self.dropout(out)
-=======
         if self.roi_pooling_type == 'roi_pool':
             images_segments = roi_pool(images, rois_batch.view(-1, 5), self.roi_pooling_size, spatial_scale)
         else:
@@ -107,5 +75,4 @@ class Encoder(nn.Module):
         out = transcripts_segments + images_segments
         out = self.dropout(out)
         out = self.norm(out)
->>>>>>> 8325ff1fa00fa5a6f103b446937a4c0593d62817
         return out

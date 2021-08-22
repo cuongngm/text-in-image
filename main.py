@@ -73,6 +73,7 @@ def test_detect():
 
 
 if __name__ == '__main__':
+    """
     img = torch.randn(4, 3, 640, 640)
     boxes = torch.randn(4, 20, 8)
     transcripts = torch.randn(4, 20, 100, 512)
@@ -81,4 +82,15 @@ if __name__ == '__main__':
         cfg = yaml.safe_load(stream)
     model = Encoder()
     out = model(img, boxes, transcripts, src_key_padding_mask)
-    print(out.size())
+    print(out.size())  # [B *N, T, D]
+    """
+    import os
+    for filename in os.listdir('result/key'):
+        filepath = os.path.join('result/key', filename)
+        with open(filepath, 'r') as file:
+            lines = file.readlines()
+            lines[5] = 'unit_price\t\n'
+            lines[6] = 'price\t\n'
+        with open(filepath, 'w') as file_write:
+            for line in lines:
+                file_write.write(line)

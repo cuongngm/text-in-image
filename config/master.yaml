@@ -35,11 +35,11 @@ model_arch:
     share_parameter: False
 functional:
   load_data: src.loader.reg_loader,TextDataset
-  conv_embedding_gc: src.model.backbone.resnet,ConvEmbeddingGC
-  encoder: src.model.reg_model.transformer,Encoder
-  decoder: src.model.reg_model.transformer,Decoder
-  generator: src.model.reg_model.master,Generator
-  master: src.model.reg_model.master,MASTER
+  conv_embedding_gc: src.model.common.resnet,ConvEmbeddingGC
+  encoder: src.model.recognition.transformer,Encoder
+  decoder: src.model.recognition.transformer,Decoder
+  generator: src.model.recognition.master,Generator
+  master: src.model.recognition.master,MASTER
 train_loader:
   batch_size: 32
   shuffle: True

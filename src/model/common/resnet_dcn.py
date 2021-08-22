@@ -48,11 +48,11 @@ class BasicBlock(nn.Module):
         else:
             deformable_groups = dcn.get('deformable_groups', 1)
             if not self.with_modulated_dcn:
-                from src.model.backbone.dcn import DeformConv
+                from src.model.common.dcn import DeformConv
                 conv_op = DeformConv
                 offset_channels = 18
             else:
-                from src.model.backbone.dcn import ModulatedDeformConv
+                from src.model.common.dcn import ModulatedDeformConv
                 conv_op = ModulatedDeformConv
                 offset_channels = 27
             self.conv2_offset = nn.Conv2d(
@@ -119,11 +119,11 @@ class Bottleneck(nn.Module):
         else:
             deformable_groups = dcn.get('deformable_groups', 1)
             if not self.with_modulated_dcn:
-                from src.model.backbone.dcn import DeformConv
+                from src.model.common.dcn import DeformConv
                 conv_op = DeformConv
                 offset_channels = 18
             else:
-                from src.model.backbone.dcn import ModulatedDeformConv
+                from src.model.common.dcn import ModulatedDeformConv
                 conv_op = ModulatedDeformConv
                 offset_channels = 27
             self.conv2_offset = nn.Conv2d(

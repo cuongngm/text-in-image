@@ -7,7 +7,7 @@ from src.utils.utils_function import create_module
 class DBNet(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.backbone = create_module(config['model']['backbone'])(config['base']['pretrained'])
+        self.backbone = create_module(config['model']['common'])(config['base']['pretrained'])
         self.head = create_module(config['model']['head'])(config['base']['in_channels'],
                                                            config['base']['inner_channels'])
         self.seg_out = create_module(config['model']['segout'])(config['base']['inner_channels'],

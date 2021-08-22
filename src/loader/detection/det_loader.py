@@ -5,8 +5,8 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from src.loader.augment import DetAugment
-from src.loader.make_segmap import MakeSegMap
-from src.loader.make_bordermap import MakeBorderMap
+from src.loader.detection.make_segmap import MakeSegMap
+from src.loader.detection.make_bordermap import MakeBorderMap
 from src.utils.utils_function import resize
 
 

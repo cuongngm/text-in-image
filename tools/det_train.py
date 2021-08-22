@@ -10,7 +10,7 @@ import sys
 sys.path.append('./')
 from src.utils.utils_function import create_dir, create_module, save_checkpoint, dict_to_device
 from src.utils.logger import Logger
-from src.utils.metrics import runningScore, cal_text_score, QuadMetric
+from src.utils.det_metrics import runningScore, cal_text_score, QuadMetric
 warnings.filterwarnings('ignore')
 
 

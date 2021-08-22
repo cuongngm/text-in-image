@@ -1,8 +1,8 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 from src.utils.utils_function import create_module
-from src.loader.translate import LabelTransformer
-from src.model.reg_model.master import greedy_decode_with_probability
+from src.loader.recognition.translate import LabelTransformer
+from src.model.recognition.master import greedy_decode_with_probability
 
 
 class MasterReg:

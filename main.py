@@ -1,9 +1,8 @@
 import yaml
-from src.loader.det_loader import DBLoader
+from src.loader.detection.det_loader import DBLoader
 from torch.utils.data import DataLoader
 import torch
-from src.model.reg_model.master import MASTER
-from src.model.backbone.resnet import resnet50_master
+from src.model.kie.encoder import Encoder
 
 
 def test_detect():
@@ -74,9 +73,24 @@ def test_detect():
 
 
 if __name__ == '__main__':
-    img = torch.randn(4, 1, 640, 640)
+    """
+    img = torch.randn(4, 3, 640, 640)
+    boxes = torch.randn(4, 20, 8)
+    transcripts = torch.randn(4, 20, 100, 512)
+    src_key_padding_mask = torch.randn(80, 100)
     with open('config/master.yaml', 'r') as stream:
         cfg = yaml.safe_load(stream)
-    model = resnet50_master(cfg)
-    out = model(img)
-    print(out.size())
+    model = Encoder()
+    out = model(img, boxes, transcripts, src_key_padding_mask)
+    print(out.size())  # [B *N, T, D]
+    """
+    import os
+    for filename in os.listdir('result/key'):
+        filepath = os.path.join('result/key', filename)
+        with open(filepath, 'r') as file:
+            lines = file.readlines()
+            lines[5] = 'unit_price\t\n'
+            lines[6] = 'price\t\n'
+        with open(filepath, 'w') as file_write:
+            for line in lines:
+                file_write.write(line)

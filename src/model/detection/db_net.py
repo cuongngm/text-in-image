@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from src.utils.utils_function import create_module
@@ -7,12 +6,12 @@ from src.utils.utils_function import create_module
 class DBNet(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.backbone = create_module(config['model']['common'])(config['base']['pretrained'])
-        self.head = create_module(config['model']['head'])(config['base']['in_channels'],
-                                                           config['base']['inner_channels'])
-        self.seg_out = create_module(config['model']['segout'])(config['base']['inner_channels'],
-                                                                config['base']['k'],
-                                                                config['base']['adaptive'])
+        self.backbone = create_module(config['model']['backbone']['function'])(config['model']['backbone']['pretrained'])
+        self.head = create_module(config['model']['head']['function'])(config['model']['head']['in_channels'],
+                                                                       config['model']['head']['inner_channels'])
+        self.seg_out = create_module(config['model']['segout']['function'])(config['model']['segout']['inner_channels'],
+                                                                            config['model']['segout']['k'],
+                                                                            config['model']['segout']['adaptive'])
 
     def forward(self, x):
         """
@@ -26,13 +25,3 @@ class DBNet(nn.Module):
         y = F.interpolate(segmentation_head_out, size=(H, W),
                           mode='bilinear', align_corners=True)
         return y
-
-
-class DetLoss(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.loss = create_module(config['loss']['function'])(config['loss']['l1_scale'],
-                                                              config['loss']['bce_scale'])
-
-    def forward(self, pre_batch, gt_batch):
-        return self.loss(pre_batch, gt_batch)

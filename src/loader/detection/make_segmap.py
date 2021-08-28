@@ -15,7 +15,7 @@ class MakeSegMap:
         self.is_training = is_training
         self.algorithm = algorithm
 
-    def process(self, img, polys, dontcare):
+    def process(self, img, polys):
         '''
         img: [640, 640, 3]
         polys: list of array [14, 2] len N
@@ -25,8 +25,8 @@ class MakeSegMap:
         polys = [poly for poly in polys if Polygon(poly).buffer(0).is_valid]
 
         if self.is_training:
-            polys, dontcare = self.validate_polygons(
-                polys, dontcare, h, w)
+            polys, ignores = self.validate_polygons(
+                polys, h, w)
         gt = np.zeros((h, w), dtype=np.float32)
         mask = np.ones((h, w), dtype=np.float32)
         for i in range(len(polys)):
@@ -34,10 +34,10 @@ class MakeSegMap:
             height = max(poly[:, 1]) - min(poly[:, 1])
             width = max(poly[:, 0]) - min(poly[:, 0])
 
-            if min(height, width) < self.min_text_size:
+            if ignores[i] or min(height, width) < self.min_text_size:
                 cv2.fillPoly(mask, poly.astype(
                     np.int32)[np.newaxis, :, :], 0)
-                dontcare[i] = True
+
             else:
                 polygon_shape = Polygon(poly)
                 distance = polygon_shape.area * \
@@ -50,19 +50,19 @@ class MakeSegMap:
                 if len(shrinked) == 0:
                     cv2.fillPoly(mask, poly.astype(
                         np.int32)[np.newaxis, :, :], 0)
-                    dontcare[i] = True
                     continue
                 shrinked = np.array(shrinked[0]).reshape(-1, 2)
                 cv2.fillPoly(gt, [shrinked.astype(np.int32)], 1)
         return img, gt, mask
 
-    def validate_polygons(self, polygons, ignore_tags, h, w):
+    def validate_polygons(self, polygons, h, w):
         '''
         polygons (numpy.array, required): of shape (num_instances, num_points, 2)
         '''
         if len(polygons) == 0:
-            return polygons, ignore_tags
-        assert len(polygons) == len(ignore_tags)
+            return polygons
+        # assert len(polygons) == len(ignore_tags)
+        ignore_tags = [False] * len(polygons)
         for polygon in polygons:
             polygon[:, 0] = np.clip(polygon[:, 0], 0, w - 1)
             polygon[:, 1] = np.clip(polygon[:, 1], 0, h - 1)

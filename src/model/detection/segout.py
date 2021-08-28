@@ -4,7 +4,7 @@ import torch.nn as nn
 
 
 class SegDetector(nn.Module):
-    def __init__(self, in_channels, k=50, adaptive=False, serial=False, bias=False, *args, **kwargs):
+    def __init__(self, in_channels, k=50, adaptive=False, serial=False, bias=False):
         super().__init__()
         self.k = k
         self.binarize = nn.Sequential(nn.Conv2d(in_channels, in_channels // 4, 3, padding=1, bias=bias),

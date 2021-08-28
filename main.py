@@ -1,96 +1,63 @@
 import yaml
-from src.loader.detection.det_loader import DBLoader
-from torch.utils.data import DataLoader
-import torch
-from src.model.kie.encoder import Encoder
+import matplotlib.pyplot as plt
+import cv2
+import numpy as np
+from src.loader.detection.det_loader import DetLoader
+from src.utils.utils_function import read_json
 
+with open('config/db_resnet50.yaml', 'r') as stream:
+    cfg = yaml.safe_load(stream)
+"""
+train_dataset = DetLoader(cfg, is_training=False)
+# train_loader = DataLoader(train_dataset, shuffle=True, batch_size=4)
+# samples = next(iter(train_dataset))
+samples = train_dataset[23]
+img = samples['img']
 
-def test_detect():
-    with open('config/db_resnet50.yaml', 'r') as stream:
-        cfg = yaml.safe_load(stream)
+gt = samples['gt']
+gt_mask = samples['gt_mask']
+thresh_map = samples['thresh_map']
+thresh_mask = samples['thresh_mask']
+print(img.shape)
+fig = plt.figure(figsize=(10, 10))
+rows = 2
+columns = 2
+# Adds a subplot at the 1st position
+fig.add_subplot(rows, columns, 1)
+# showing image
+plt.imshow(img)
+plt.axis('off')
+plt.title("First")
 
-    train_dataset = DBLoader(cfg, img_dir=cfg['train_load']['train_img_dir'],
-                             label_dir=cfg['train_load']['train_label_dir'], is_training=False)
-    train_loader = DataLoader(train_dataset, shuffle=True, batch_size=4)
-    # samples = next(iter(train_dataset))
-    samples = train_dataset[27]
-    img = samples['img']
+# Adds a subplot at the 2nd position
+fig.add_subplot(rows, columns, 2)
+# showing image
+plt.imshow(gt)
+plt.axis('off')
+plt.title("Second")
 
-    """
-    gt = samples[1]
-    gt_mask = samples[2]
-    thresh_map = samples[3]
-    thresh_mask = samples[4]
-    cv2.imshow('img', img)
-    cv2.imshow('gt', gt)
-    cv2.imshow('thresh map', thresh_map)
-    cv2.waitKey(0)
-    
-    print(samples['img'])
-    polys = samples['polys']
-    ignore = samples['ignore']
-    for poly in polys:
-        poly = np.array(poly)
-        poly = poly.reshape((-1, 1, 2))
-        img = cv2.polylines(img, np.int32([poly]), isClosed=True, color=(255, 0, 0), thickness=2)
-    plt.imshow(img)
-    plt.show()
-    
-    fig = plt.figure(figsize=(10, 10))
-    rows = 2
-    columns = 2
-    # Adds a subplot at the 1st position
-    fig.add_subplot(rows, columns, 1)
-    # showing image
-    plt.imshow(img)
-    plt.axis('off')
-    plt.title("First")
+# Adds a subplot at the 3rd position
+fig.add_subplot(rows, columns, 3)
+# showing image
+plt.imshow(thresh_map)
+plt.axis('off')
+plt.title("Third")
 
-    # Adds a subplot at the 2nd position
-    fig.add_subplot(rows, columns, 2)
-    # showing image
-    plt.imshow(gt)
-    plt.axis('off')
-    plt.title("Second")
+# Adds a subplot at the 4th position
+fig.add_subplot(rows, columns, 4)
+# showing image
+plt.imshow(thresh_mask)
+plt.axis('off')
+plt.title("Fourth")
+# plt.imshow(img)
 
-    # Adds a subplot at the 3rd position
-    fig.add_subplot(rows, columns, 3)
-    # showing image
-    plt.imshow(thresh_map)
-    plt.axis('off')
-    plt.title("Third")
-    
-    # Adds a subplot at the 4th position
-    fig.add_subplot(rows, columns, 4)
-    # showing image
-    plt.imshow(thresh_mask)
-    plt.axis('off')
-    plt.title("Fourth")
-    # plt.imshow(img)
+plt.show()
 
-    plt.show()
-    """
-
-
-if __name__ == '__main__':
-    """
-    img = torch.randn(4, 3, 640, 640)
-    boxes = torch.randn(4, 20, 8)
-    transcripts = torch.randn(4, 20, 100, 512)
-    src_key_padding_mask = torch.randn(80, 100)
-    with open('config/master.yaml', 'r') as stream:
-        cfg = yaml.safe_load(stream)
-    model = Encoder()
-    out = model(img, boxes, transcripts, src_key_padding_mask)
-    print(out.size())  # [B *N, T, D]
-    """
-    import os
-    for filename in os.listdir('result/key'):
-        filepath = os.path.join('result/key', filename)
-        with open(filepath, 'r') as file:
-            lines = file.readlines()
-            lines[5] = 'unit_price\t\n'
-            lines[6] = 'price\t\n'
-        with open(filepath, 'w') as file_write:
-            for line in lines:
-                file_write.write(line)
+polys = samples['polys']
+for poly in polys:
+    poly = np.array(poly)
+    poly = poly.reshape((-1, 1, 2))
+    img = cv2.polylines(img, np.int32([poly]), isClosed=True, color=(255, 0, 0), thickness=2)
+plt.imshow(img)
+plt.show()
+"""

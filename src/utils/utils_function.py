@@ -2,9 +2,10 @@ import os
 import cv2
 import numpy as np
 import random
-import math
+import json
 from PIL import Image
 from pathlib import Path
+from collections import OrderedDict
 import importlib
 import torch
 
@@ -97,27 +98,14 @@ def merge_config(config, args):
     return config
 
 
-def resize(image, polys, ignore, size=640):
-    h, w, c = image.shape
-    scale_w = size / w
-    scale_h = size / h
-    scale = min(scale_w, scale_h)
-    h = int(h * scale)
-    w = int(w * scale)
-    padimg = np.zeros((size, size, c), image.dtype)
-    padimg[:h, :w] = cv2.resize(image, (w, h))
-    new_polys = []
-    for poly in polys:
-        poly = np.array(poly).astype(np.float64)
-        poly *= scale
-        poly = poly.reshape(-1, 2).tolist()
-        # poly = poly.tolist()
-        new_polys.append(poly)
-    return padimg, new_polys, ignore
-
-
 def dict_to_device(batch, device='cuda'):
     for k, v in batch.items():
         if isinstance(v, torch.Tensor):
             batch[k] = v.to(device)
     return batch
+
+
+def read_json(filename):
+    filename = Path(filename)
+    with filename.open('rt', encoding='utf-8') as handle:
+        return json.load(handle, object_hook=OrderedDict)

@@ -1,5 +1,7 @@
-import cv2
+import logging
+from pathlib import Path
 from tqdm import tqdm
+from datetime import datetime
 import os
 import yaml
 import argparse
@@ -9,53 +11,75 @@ from torch.utils.data import DataLoader
 import sys
 sys.path.append('./')
 from src.utils.utils_function import create_dir, create_module, save_checkpoint, dict_to_device
-from src.utils.logger import Logger
 from src.utils.det_metrics import runningScore, cal_text_score, QuadMetric
+from src.logger.logger import setup_logging
 warnings.filterwarnings('ignore')
 
 
-def train_val_program(args):
+def get_data_loader(cfg, logger):
+    train_dataset = create_module(cfg['dataset']['function'])(cfg, is_training=True)
+    test_dataset = create_module(cfg['dataset']['function'])(cfg, is_training=False)
+    train_loader = DataLoader(train_dataset, batch_size=cfg['dataset']['train_load']['batch_size'],
+                              shuffle=True, num_workers=cfg['dataset']['train_load']['num_workers'])
+    test_loader = DataLoader(test_dataset, batch_size=cfg['dataset']['test_load']['batch_size'],
+                             shuffle=True, num_workers=cfg['dataset']['test_load']['num_workers'])
+    logger.info('Loaded successful!. Train datasets: {}, test datasets: {}'.format(len(train_dataset), len(test_dataset)))
+    return train_loader, test_loader
+
+
+def get_logger(name):
+    logger = logging.getLogger(name=name)
+    logger.setLevel(logging.DEBUG)
+    return logger
+
+
+def main(args):
     with open(args.config, 'r') as stream:
-        config = yaml.safe_load(stream)
-    os.environ["CUDA_VISIBLE_DEVICES"] = config['base']['gpu_id']
+        cfg = yaml.safe_load(stream)
+    # create log and save file
+    save_dir = Path(cfg['base']['save_dir'])
+    exp_name = cfg['base']['algorithm']
+    run_id = datetime.now().strftime(r'%m%d_%H%M%S')
+    save_model_dir = save_dir / 'ckpt' / exp_name / run_id
+    log_dir = save_dir / 'logs' / exp_name / run_id
+    log_dir.mkdir(parents=True, exist_ok=True)
+    save_model_dir.mkdir(parents=True, exist_ok=True)
+    setup_logging(log_dir)
+    logger = get_logger('train')
 
-    create_dir(config['base']['checkpoint'])
-    checkpoints_path = config['base']['checkpoint']
+    # create train, test loader
+    train_loader, test_loader = get_data_loader(cfg, logger)
 
-    model = create_module(config['model']['function'])(config)
-    criterion = create_module(config['model']['loss_function'])(config)
-    train_dataset = create_module(config['train_load']['function'])(config, config['train_load']['train_img_dir'],
-                                                                    config['train_load']['train_label_dir'], is_training=True)
-    val_dataset = create_module(config['train_load']['function'])(config, config['val_load']['val_img_dir'],
-                                                                  config['val_load']['val_label_dir'], is_training=False)
-    optimizer = create_module(config['optimizer']['function'])(config, model.parameters())
-    optimizer_decay = create_module(config['optimizer_decay']['function'])
-    img_process = create_module(config['postprocess']['function'])(config)
-    metric_cls = QuadMetric()
-    train_loader = DataLoader(train_dataset, batch_size=config['train_load']['batch_size'], shuffle=True,
-                              num_workers=config['train_load']['num_workers'])
-    val_loader = DataLoader(val_dataset, batch_size=config['val_load']['batch_size'], shuffle=False,
-                            num_workers=config['val_load']['num_workers'])
+    model = create_module(cfg['model']['function'])(cfg)
+    logger.info('Model created, trainable parameters:')
+    criterion = create_module(cfg['loss']['function'])(cfg['loss']['l1_scale'], cfg['loss']['bce_scale'])
+    optimizer = create_module(cfg['optimizer']['function'])(cfg, model.parameters())
+    post_process = create_module(cfg['post_process']['function'])(cfg)
+    logger.info('Optimizer created.')
+    logger.info('Training start...')
 
+    os.environ['CUDA_VISIBLE_DEVICES'] = cfg['base']['gpu_id']
     if torch.cuda.is_available():
-        if len(config['base']['gpu_id'].split(',')) > 1:
+        if len(cfg['train']['gpu_id'].split(',')) > 1:
             model = torch.nn.DataParallel(model).cuda()
         else:
             model = model.cuda()
         criterion = criterion.cuda()
 
-    start_epoch = 1
-    best_hmean = 0
-    if config['base']['restore']:
-        print('Resume from checkpoint...')
-        assert os.path.isfile(config['base']['restore_file']), 'checkpoint path is not correct'
-        checkpoint = torch.load(config['base']['restore_file'])
+    if args.resume:
+        assert os.path.isfile(cfg['base']['ckpt_file']), 'checkpoint path is not correct'
+        logger.info('Resume from checkpoint: {}'.format(cfg['base']['ckpt_file']))
+        checkpoint = torch.load(cfg['base']['ckpt_file'])
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         best_hmean = checkpoint['hmean']
     else:
-        print('Training from scratch...')
+        logger.info('Training from scratch...')
+    """
+    start_epoch = 1
+    best_hmean = 0
+    metric_cls = QuadMetric()
     if args.start_epoch is not None:
         start_epoch = args.start_epoch
     for epoch in range(start_epoch, config['base']['n_epoch'] + 1):
@@ -81,6 +105,7 @@ def train_val_program(args):
                 'lr': config['optimizer']['base_lr'],
                 'optimizer': optimizer.state_dict(),
             }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
+    """
 
 
 def model_train(train_loader, model, criterion, optimizer, config, epoch):
@@ -129,9 +154,8 @@ def model_eval(test_loader, model, imgprocess, config, metric_cls):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyper_parameter')
-    parser.add_argument('--config', help='config path')
-    parser.add_argument('--start_epoch', type=int, default=None)
-    # parameter training
-    parser.add_argument('--start_val', type=int, default=1)
+    parser.add_argument('--config', type=str, default='config/db_resnet50.yaml', help='config path')
+    parser.add_argument('--resume', type=bool, default=False, help='resume from checkpoint')
     args = parser.parse_args()
-    train_val_program(args)
+    main(args)
+

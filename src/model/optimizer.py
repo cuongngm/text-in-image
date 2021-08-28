@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import torch
 
 
@@ -35,28 +36,15 @@ def SGDR(lr_max, lr_min, T_cur, T_m, ratio=0.3):
     return lr, lr_max
 
 
-def adjust_learning_rate_poly(config, optimizer, epoch):
-    lr = lr_poly(config['optimizer']['base_lr'], epoch,
-                 config['base']['n_epoch'], config['optimizer_decay']['factor'])
-    optimizer.param_groups[0]['lr'] = lr
+def adjust_learning_rate(optimizer, base_lr, iter, all_iters, factor, warmup_iters=0, warmup_factor=1.0 / 3):
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    if iter < warmup_iters:
+        alpha = float(iter) / warmup_iters
+        rate = warmup_factor * (1 - alpha) + alpha
+    else:
+        rate = np.power(1.0 - iter / float(all_iters + 1), factor)
+    lr = rate * base_lr
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+    return lr
 
-
-def adjust_learning_rate_sgdr(config, optimizer, epoch):
-    lr, lr_max = SGDR(config['optimizer']['lr_max'], config['optimizer']['lr_min'], epoch, config['optimizer']['T_m'],
-                      config['optimizer']['ratio'])
-    optimizer.param_groups[0]['lr'] = lr
-    config['optimizer']['lr_max'] = lr_max
-
-
-def adjust_learning_rate(config, optimizer, epoch):
-    if epoch in config['optimizer_decay']['schedule']:
-        adjust_lr = optimizer.param_groups[0]['lr'] * config['optimizer_decay']['gama']
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = adjust_lr
-
-
-def adjust_learning_rate_center(config, optimizer, epoch):
-    if epoch in config['optimizer_decay_center']['schedule']:
-        adjust_lr = optimizer.param_groups[0]['lr'] * config['optimizer_decay_center']['gama']
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = adjust_lr

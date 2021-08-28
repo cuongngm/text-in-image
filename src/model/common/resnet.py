@@ -271,4 +271,3 @@ class ConvEmbeddingGC(nn.Module):
         feature = feature.view(b, c, h*w)
         feature = feature.permute((0, 2, 1))
         return feature
-

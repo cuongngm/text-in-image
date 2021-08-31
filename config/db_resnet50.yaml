@@ -50,4 +50,14 @@ post_process:
   unclip_ratio: 1.5
   min_size: 3
   function: src.model.detection.postprocess,DBPostProcess
+trainer:
+  num_epoch: 100
+  distributed: True
+  local_world_size: 2
+  local_rank: -1
+  num_class: 2
+  log_iter: 50
+metric:
+  thresh_text_score: 0.25
+  is_output_polygon: False
 

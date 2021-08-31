@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from tqdm import tqdm
+import numpy as np
 from datetime import datetime
 import os
 import yaml
@@ -8,9 +8,11 @@ import argparse
 import warnings
 import torch
 from torch.utils.data import DataLoader
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 import sys
 sys.path.append('./')
-from src.utils.utils_function import create_dir, create_module, save_checkpoint, dict_to_device
+from src.utils.utils_function import create_module, save_checkpoint, dict_to_device
 from src.utils.det_metrics import runningScore, cal_text_score, QuadMetric
 from src.logger.logger import setup_logging
 warnings.filterwarnings('ignore')
@@ -31,6 +33,173 @@ def get_logger(name):
     logger = logging.getLogger(name=name)
     logger.setLevel(logging.DEBUG)
     return logger
+
+
+class TrainerDet:
+    def __init__(self, train_loader, test_loader, model, optimizer, criterion, post_process,
+                 logger, save_model_dir, config, args):
+        self.train_loader = train_loader
+        self.test_loader = test_loader
+        self.distributed = config['trainer']['distributed']
+        local_world_size = config['trainer']['local_world_size']
+        if config['distributed']:
+            logger.info('Distributed GPU training model start...')
+            if torch.cuda.is_available():
+                if torch.cuda.device_count() < local_world_size:
+                    raise RuntimeError(f'the number of GPU ({torch.cuda.device_count()}) is less than'
+                                       f'the number of process ({local_world_size}) running on each node')
+            else:
+                raise RuntimeError('CUDA is not available, Distributed training is not supported')
+            dist.init_process_group(backend='nccl', init_method='env://')
+            logger.info(f'[Process {os.getpid()}] world_size = {dist.get_world_size()}, '
+                        + f'rank = {dist.get_rank()}, backend={dist.get_backend()}')
+        else:
+            logger.info('One GPU or CPU training mode start...')
+            if local_world_size != 1:
+                raise RuntimeError('local_world_size must set be to 1, if distributed is set to false')
+
+        self.logger = logger
+        self.save_model_dir = save_model_dir
+        self.device, self.device_ids = self.prepare_device(config['trainer']['local_rank'],
+                                                           config['trainer']['local_world_size'])
+        self.model = model.to(self.device)
+        self.optimizer = optimizer
+        self.criterion = criterion
+        self.post_process = post_process
+        self.batch_shape = {'shape': [(config['dataset']['crop_shape'][0], config['dataset']['crop_shape'][1])]}
+        self.metric_cls = QuadMetric()
+        self.running_metric_text = runningScore(config['trainer']['num_class'])
+
+        self.start_epoch = 1
+        self.epochs = config['trainer']['num_epoch']
+        self.config = config
+        if config['trainer']['sync_batch_norm'] and self.distributed:
+            self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
+        if self.distributed:
+            self.model = DDP(self.model, device_ids=self.device_ids, output_device=self.device_ids[0],
+                             find_unused_parameters=True)
+
+        if args.resume:
+            assert os.path.isfile(config['base']['ckpt_file']), 'checkpoint path is not correct'
+            logger.info('Resume from checkpoint: {}'.format(config['base']['ckpt_file']))
+            checkpoint = torch.load(config['base']['ckpt_file'])
+            self.start_epoch = checkpoint['epoch']
+            self.model.load_state_dict(checkpoint['state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+        else:
+            logger.info('Training from scratch...')
+
+    def train(self):
+        if self.distributed:
+            dist.barrier()
+        best_train_loss = np.inf
+        best_hmean = 0
+        for epoch in range(self.start_epoch, self.epochs + 1):
+            torch.cuda.empty_cache()
+            self.logger.info('Training in epoch: {}/{}'.format(epoch, self.epochs))
+            train_loss = self.train_epoch(epoch)
+            self.logger.info('Train loss: {}', train_loss)
+            recall, precision, hmean = self.test_epoch()
+            self.logger.info('Test: Recall: {} - Precision:{} - Hmean: {}'.format(recall, precision, hmean))
+            if hmean > best_hmean:
+                best_hmean = hmean
+                save_checkpoint({
+                    'epoch': epoch,
+                    'state_dict': self.model.state_dict()
+                }, self.save_model_dir, 'best_hmean.pth')
+            if train_loss < best_train_loss:
+                best_train_loss = train_loss
+                save_checkpoint({
+                    'epoch': epoch,
+                    'state_dict': self.model.state_dict()
+                }, self.save_model_dir, 'best_cp.pth')
+        self.logger.info('Training completed')
+        save_checkpoint({
+            'epoch': self.epochs,
+            'state_dict': self.model.state_dict()
+        }, self.save_model_dir, 'last_cp.pth')
+        self.logger.info('Saved model')
+        if self.distributed:
+            dist.destroy_process_group()
+
+    def train_epoch(self, epoch):
+        self.model.train()
+        train_loss = 0
+        for idx, batch in enumerate(self.train_loader):
+            lr = self.optimizer.param_group[0]['lr']
+            running_metric_text = self.running_metric_text.reset()
+            batch = dict_to_device(batch, device=self.device)
+            preds = self.model(batch['img'])
+            assert preds.size(1) == 3
+            _batch = torch.stack([batch['gt'], batch['gt_mask'],
+                                  batch['thresh_map'], batch['thresh_mask']])
+            total_loss = self.criterion(preds, _batch)
+            self.optimizer.zero_grad()
+            total_loss.backwark()
+            self.optimizer.step()
+            score_shrink_map = cal_text_score(preds[:, 0, :, :],
+                                              batch['gt'], batch['gt_mask'],
+                                              running_metric_text)
+            train_loss += total_loss
+            acc = score_shrink_map['Mean Acc']
+            iou_shrink_map = score_shrink_map['Mean IoU']
+            if idx % self.config['trainer']['log_iter'] == 0:
+                self.logger.info('[{}-{}] - lr:{} - total-loss:{} - acc:{} - iou:{}'
+                                 .format(epoch, idx, lr, total_loss, acc, iou_shrink_map))
+        return train_loss / len(self.train_loader)
+
+    def test_epoch(self):
+        self.model.eval()
+        raw_metrics = []
+        for idx, test_batch in enumerate(self.test_loader):
+            with torch.no_grad():
+                test_batch = dict_to_device(test_batch, device=self.device)
+                test_preds = self.model(test_batch['img'])
+                box_list, score_list = self.post_process(self.batch_shape, test_preds)
+                raw_metric = self.metric_cls.validate_measure(test_batch, (box_list, score_list))
+                raw_metrics.append(raw_metric)
+        metrics = self.metric_cls.gather_measure(raw_metrics)
+        recall = metrics['recall'].avg
+        precision = metrics['precision'].avg
+        hmean = metrics['fmeasure'].avg
+        return recall, precision, hmean
+
+    def prepare_device(self, local_rank, local_world_size):
+        if self.distributed:
+            ngpu_per_process = torch.cuda.device_count() // local_world_size
+            device_ids = list(range(local_rank * ngpu_per_process, (local_rank + 1) * ngpu_per_process))
+            if torch.cuda.is_available() and local_rank != -1:
+                torch.cuda.set_device(device_ids[0])
+                device = 'cuda'
+                self.logger.info(f"[Process {os.getpid()}] world_size = {dist.get_world_size()}, " +
+                                 f"rank = {dist.get_rank()}, n_gpu/process = {ngpu_per_process}," +
+                                 f"device_ids = {device_ids}")
+            else:
+                self.logger.warning('Training will be using CPU!')
+                device = 'cpu'
+            device = torch.device(device)
+            return device, device_ids
+        else:
+            n_gpu = torch.cuda.device_count()
+            n_gpu_use = local_world_size
+            if n_gpu_use > 0 and n_gpu == 0:
+                self.logger.warning('Warning: There\'s no GPU available on this machine,'
+                                    'training will be performed on CPU.')
+                n_gpu_use = 0
+            if n_gpu_use > n_gpu:
+                self.logger.warning('Warning: The number of GPU\'s configured to use is {},'
+                                    'but only {} is available'.format(n_gpu_use, n_gpu))
+                n_gpu_use = n_gpu
+            list_ids = list(range(n_gpu_use))
+            if n_gpu_use > 0:
+                torch.cuda.set_device(list_ids[0])
+                self.logger.warning(f'Training is using GPU {list_ids[0]}!')
+                device = 'cuda'
+            else:
+                self.logger.warning('Training is using GPU!')
+                device = 'cpu'
+            device = torch.device(device)
+            return device, list_ids
 
 
 def main(args):
@@ -58,104 +227,19 @@ def main(args):
     logger.info('Optimizer created.')
     logger.info('Training start...')
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = cfg['base']['gpu_id']
-    if torch.cuda.is_available():
-        if len(cfg['train']['gpu_id'].split(',')) > 1:
-            model = torch.nn.DataParallel(model).cuda()
-        else:
-            model = model.cuda()
-        criterion = criterion.cuda()
-
-    if args.resume:
-        assert os.path.isfile(cfg['base']['ckpt_file']), 'checkpoint path is not correct'
-        logger.info('Resume from checkpoint: {}'.format(cfg['base']['ckpt_file']))
-        checkpoint = torch.load(cfg['base']['ckpt_file'])
-        start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        best_hmean = checkpoint['hmean']
-    else:
-        logger.info('Training from scratch...')
-    """
-    start_epoch = 1
-    best_hmean = 0
-    metric_cls = QuadMetric()
-    if args.start_epoch is not None:
-        start_epoch = args.start_epoch
-    for epoch in range(start_epoch, config['base']['n_epoch'] + 1):
-        model.train()
-        optimizer_decay(config, optimizer, epoch)
-        train_loss = model_train(train_loader, model, criterion, optimizer, config, epoch)
-        print('Train loss:', train_loss.item())
-        model.eval()
-        recall, precision, hmean = model_eval(val_loader, model, img_process, config, metric_cls)
-        print('Recall:{}, precision:{}, hmean:{}'.format(recall, precision, hmean))
-        # save per epoch
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'state_dict': model.state_dict(),
-            'lr': config['optimizer']['base_lr'],
-            'optimizer': optimizer.state_dict(),
-        }, checkpoints_path, filename=config['base']['algorithm'] + '_current.pth')
-        if hmean > best_hmean:
-            best_hmean = hmean
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'lr': config['optimizer']['base_lr'],
-                'optimizer': optimizer.state_dict(),
-            }, checkpoints_path, filename=config['base']['algorithm'] + '_best.pth')
-    """
+    trainer = TrainerDet(train_loader, test_loader, model, optimizer, criterion, post_process,
+                         logger, save_model_dir, cfg, args)
+    trainer.train()
 
 
-def model_train(train_loader, model, criterion, optimizer, config, epoch):
-    running_metric_text = runningScore(2)
-    train_loss = 0
-    for batch_idx, data in enumerate(train_loader):
-        lr = optimizer.param_groups[0]['lr']
-        data = dict_to_device(data)
-        preds = model(data['img'])
-        assert preds.size(1) == 3
-        _batch = torch.stack([data['gt'], data['gt_mask'], data['thresh_map'], data['thresh_mask']])
-        total_loss = criterion(preds, _batch)
-        optimizer.zero_grad()
-        total_loss.backward()
-        optimizer.step()
-        score_shrink_map = cal_text_score(preds[:, 0, :, :],
-                                          data['gt'], data['gt_mask'], running_metric_text, thresh=0.3)
-        acc = score_shrink_map['Mean Acc']
-        iou_shrink_map = score_shrink_map['Mean IoU']
-        train_loss += total_loss
-        if batch_idx % config['base']['show_step'] == 0:
-            print('Epoch:{} - Step:{} - lr:{} - loss:{} - acc:{} - iou:{}'.format(epoch, batch_idx, lr, total_loss,
-                                                                              acc, iou_shrink_map))
-    end_epoch_loss = train_loss / len(train_loader)
-    return end_epoch_loss
-
-
-def model_eval(test_loader, model, imgprocess, config, metric_cls):
-    raw_metrics = []
-    for idx, test_batch in tqdm(enumerate(test_loader), total=len(test_loader)):
-        with torch.no_grad():
-            test_data = dict_to_device(test_data)
-            test_preds = model(test_data['img'])
-            assert test_preds.size(1) == 2
-            batch_shape = {'shape': [(736, 736)]}
-            box_list, score_list = imgprocess(batch_shape, test_preds,
-                                              is_output_polygon=config['postprocess']['is_poly'])
-            raw_metric = metric_cls.validate_measure(test_batch, (box_list, score_list))
-            raw_metrics.append(raw_metric)
-    metrics = metric_cls.gather_measure(raw_metrics)
-    recall = metrics['recall'].avg
-    precision = metrics['precision'].avg
-    hmean = metrics['fmeasure'].avg
-    return recall, precision, hmean
-
-
-if __name__ == '__main__':
+def parse_args():
     parser = argparse.ArgumentParser(description='Hyper_parameter')
     parser.add_argument('--config', type=str, default='config/db_resnet50.yaml', help='config path')
     parser.add_argument('--resume', type=bool, default=False, help='resume from checkpoint')
     args = parser.parse_args()
-    main(args)
+    return args
 
+
+if __name__ == '__main__':
+    args = parse_args()
+    main(args)

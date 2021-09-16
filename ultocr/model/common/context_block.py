@@ -10,6 +10,7 @@ class MultiAspectGCAttention(nn.Module):
         super().__init__()
         assert pooling_type in ['avg', 'att']
         assert fusion_type in ['channel_add', 'channel_mul', 'channel_concat']
+        assert inplanes % headers == 0 and inplanes >= 8  # inplanes must be divided by headers evenly
         self.inplanes = inplanes
         self.ratio = ratio
         self.headers = headers
@@ -62,19 +63,13 @@ class MultiAspectGCAttention(nn.Module):
         # x: [B, C, H, W]
         context = self.spatial_pool(x)  # [B, C, 1, 1]
         out = x
-        if self.fusion_type == 'channel_mul':
-            channel_mul_term = torch.sigmoid(self.channel_concat_conv(context))  # [B, C, 1, 1]
-            out = out * channel_mul_term
-        elif self.fusion_type == 'channel_add':
-            channel_add_term = self.channel_concat_conv(context)
-            out = out + channel_add_term
-        else:
-            channel_concat_term = self.channel_concat_conv(context)  # [B, C, 1, 1]
-            b1, c1, _, _ = channel_concat_term.shape
-            b, c, h, w = out.shape
-            out = torch.cat([out, channel_concat_term.expand(-1, -1, h, w)], dim=1)  # [B, 2*C, H, W]
-            out = self.cat_conv(out)  # [B, C, H, W]
-            out = f.layer_norm(out, [self.inplanes, h, w])
-            out = f.relu(out)
+
+        channel_concat_term = self.channel_concat_conv(context)  # [B, C, 1, 1]
+        b1, c1, _, _ = channel_concat_term.shape
+        b, c, h, w = out.shape
+        out = torch.cat([out, channel_concat_term.expand(-1, -1, h, w)], dim=1)  # [B, 2*C, H, W]
+        out = self.cat_conv(out)  # [B, C, H, W]
+        out = f.layer_norm(out, [self.inplanes, h, w])
+        out = f.relu(out)
         return out
 

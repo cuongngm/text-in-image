@@ -76,20 +76,11 @@ class ResizeWeight(object):
 
 
 class ConvertLabelToMASTER(object):
-    def __init__(self, classes, max_length=-1, ignore_over=False):
-        cls_list = None
-        if isinstance(classes, str):
+    def __init__(self, vocab_file, max_length=-1, ignore_over=False):
+        with open(vocab_file, 'r') as file:
+            classes = file.read()
+            classes = classes.strip()
             cls_list = list(classes)
-        if isinstance(classes, Path):
-            p = Path(classes)
-            if not p.exists():
-                raise RuntimeError('key file is not found')
-            with p.open(encoding='utf8') as f:
-                classes = f.read()
-                classes = classes.strip()
-                cls_list = list(classes)
-        elif isinstance(classes, list):
-            cls_list = classes
 
         self.alphabet = cls_list
         self.dict = {}

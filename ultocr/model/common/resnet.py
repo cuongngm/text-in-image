@@ -1,6 +1,4 @@
 import math
-import torch
-import torch.utils.model_zoo as model_zoo
 import torch.nn as nn
 from ultocr.model.common.context_block import MultiAspectGCAttention
 

@@ -36,8 +36,10 @@ model_arch:
 functional:
   load_data: ultocr.loader.reg_loader,TextDataset
   conv_embedding_gc: ultocr.model.common.resnet,ConvEmbeddingGC
-  encoder: ultocr.model.recognition.transformer,Encoder
-  decoder: ultocr.model.recognition.transformer,Decoder
+  embedding: ultocr.model.common.transformer,Embeddings
+  multi_head_attention: ultocr.model.common.transformer,MultiHeadAttention
+  feed_forward: ultocr.model.common.transformer,FeedForward
+  position: ultocr.model.common.transformer,PositionEncoding
   generator: ultocr.model.recognition.master,Generator
   master: ultocr.model.recognition.master,MASTER
 train_loader:

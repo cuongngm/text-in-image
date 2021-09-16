@@ -90,7 +90,7 @@ class Recognition:
         self.img_w = cfg['dataset']['img_w']
         self.img_h = cfg['dataset']['img_h']
         self.batch = 16
-        self.convert = ConvertLabelToMASTER(classes=Path(__file__).parent.joinpath('ultocr/utils/vocab.txt'),
+        self.convert = ConvertLabelToMASTER(vocab_file='ultocr/utils/vocab.txt',
                                             max_length=100, ignore_over=False)
         model = create_module(cfg['functional']['master'])(cfg)
         state_dict = torch.load('saved/weight/master_30e.pth', map_location=self.device)

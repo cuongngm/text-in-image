@@ -9,7 +9,7 @@ import time
 from PIL import Image
 import torchvision.transforms as transforms
 sys.path.append('./')
-from src.utils.utils_function import create_module, load_model, resize_image_batch, create_dir
+from ultocr.utils.utils_function import create_module, load_model, resize_image_batch, create_dir
 
 
 def config_load(args):

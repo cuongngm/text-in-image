@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from src.utils.utils_function import create_module
+from ultocr.utils.utils_function import create_module
 
 
 class DBNet(nn.Module):

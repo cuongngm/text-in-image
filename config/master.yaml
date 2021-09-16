@@ -34,12 +34,12 @@ model_arch:
     ff_dim: 2048
     share_parameter: False
 functional:
-  load_data: src.loader.reg_loader,TextDataset
-  conv_embedding_gc: src.model.common.resnet,ConvEmbeddingGC
-  encoder: src.model.recognition.transformer,Encoder
-  decoder: src.model.recognition.transformer,Decoder
-  generator: src.model.recognition.master,Generator
-  master: src.model.recognition.master,MASTER
+  load_data: ultocr.loader.reg_loader,TextDataset
+  conv_embedding_gc: ultocr.model.common.resnet,ConvEmbeddingGC
+  encoder: ultocr.model.recognition.transformer,Encoder
+  decoder: ultocr.model.recognition.transformer,Decoder
+  generator: ultocr.model.recognition.master,Generator
+  master: ultocr.model.recognition.master,MASTER
 train_loader:
   batch_size: 32
   shuffle: True
@@ -52,7 +52,7 @@ val_loader:
   num_workers: -1
 optimizer:
   type: 'Adam'
-  functional: src.model.optimizer,Adam
+  functional: ultocr.model.optimizer,Adam
   lr: 0.0004
 lr_scheduler:
   type: 'StepLR'

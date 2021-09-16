@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from src.utils.utils_function import create_module
+from ultocr.utils.utils_function import create_module
 
 
 class Generator(nn.Module):

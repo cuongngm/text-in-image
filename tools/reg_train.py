@@ -10,12 +10,12 @@ import torch.nn.functional as f
 import torch.distributed as dist
 from torch.utils.data import DataLoader, DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
-from src.loader.recognition.reg_loader import DistCollateFn
-from src.loader.recognition.translate import LabelTransformer
-from src.model.recognition.master import greedy_decode_with_probability
-from src.utils.reg_metrics import AverageMetricTracker
-from src.utils.utils_function import create_module
-from src.utils.logger import TrainLog
+from ultocr.loader.recognition.reg_loader import DistCollateFn
+from ultocr.loader.recognition.translate import LabelTransformer
+from ultocr.model.recognition.master import greedy_decode_with_probability
+from ultocr.utils.reg_metrics import AverageMetricTracker
+from ultocr.utils.utils_function import create_module
+from ultocr.utils.logger import TrainLog
 
 
 def fix_random_seed_for_reproduce(seed):

@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import cv2
 import numpy as np
 from torch.utils.data import DataLoader
-from src.loader.detection.det_loader import DetLoader
-from src.utils.utils_function import read_json
+from ultocr.loader.detection.det_loader import DetLoader
+from ultocr.utils.utils_function import read_json
 
 with open('config/db_resnet50.yaml', 'r') as stream:
     cfg = yaml.safe_load(stream)

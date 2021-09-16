@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
-from src.loader.recognition.translate import LabelTransformer
+from ultocr.loader.recognition.translate import LabelTransformer
 
 
 class TextDataset(Dataset):

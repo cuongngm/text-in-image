@@ -5,9 +5,9 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
-from src.loader.augment import DetAugment
-from src.loader.detection.make_segmap import MakeSegMap
-from src.loader.detection.make_bordermap import MakeBorderMap
+from ultocr.loader.augment import DetAugment
+from ultocr.loader.detection.make_segmap import MakeSegMap
+from ultocr.loader.detection.make_bordermap import MakeBorderMap
 
 
 class DetLoader(Dataset):

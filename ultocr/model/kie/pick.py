@@ -3,8 +3,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from src.model.kie.encoder import Encoder
-from src.model.kie.graph import GLCN
+from ultocr.model.kie.encoder import Encoder
+from ultocr.model.kie.graph import GLCN
 
 
 class PICK(nn.Module):

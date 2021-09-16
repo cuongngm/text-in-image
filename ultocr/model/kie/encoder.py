@@ -4,7 +4,7 @@ import math
 import torch
 import torch.nn as nn
 from torchvision.ops import roi_pool, roi_align
-from src.model.common.resnet import resnet18, resnet50
+from ultocr.model.common.resnet import resnet18, resnet50
 
 
 class Encoder(nn.Module):

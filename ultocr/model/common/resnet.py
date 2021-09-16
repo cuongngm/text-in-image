@@ -2,7 +2,7 @@ import math
 import torch
 import torch.utils.model_zoo as model_zoo
 import torch.nn as nn
-from src.model.common.context_block import MultiAspectGCAttention
+from ultocr.model.common.context_block import MultiAspectGCAttention
 
 
 def conv3x3(in_channels, out_channels, stride=1):

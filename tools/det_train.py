@@ -12,9 +12,9 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import sys
 sys.path.append('./')
-from src.utils.utils_function import create_module, save_checkpoint, dict_to_device
-from src.utils.det_metrics import runningScore, cal_text_score, QuadMetric
-from src.logger.logger import setup_logging
+from ultocr.utils.utils_function import create_module, save_checkpoint, dict_to_device
+from ultocr.utils.det_metrics import runningScore, cal_text_score, QuadMetric
+from ultocr.logger.logger import setup_logging
 warnings.filterwarnings('ignore')
 
 

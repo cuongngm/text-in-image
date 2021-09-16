@@ -15,18 +15,18 @@ class MakeSegMap:
         self.is_training = is_training
         self.algorithm = algorithm
 
-    def process(self, img, polys):
+    def process(self, img, polys, ignore):
         '''
         img: [640, 640, 3]
         polys: list of array [14, 2] len N
         dontcare: list ignore len N
         '''
         h, w = img.shape[:2]
-        polys = [poly for poly in polys if Polygon(poly).buffer(0).is_valid]
+        # polys = [poly for poly in polys if Polygon(poly).buffer(0).is_valid]
 
         if self.is_training:
-            polys, ignores = self.validate_polygons(
-                polys, h, w)
+            polys, ignore = self.validate_polygons(
+                polys, ignore, h, w)
         gt = np.zeros((h, w), dtype=np.float32)
         mask = np.ones((h, w), dtype=np.float32)
         for i in range(len(polys)):
@@ -34,10 +34,10 @@ class MakeSegMap:
             height = max(poly[:, 1]) - min(poly[:, 1])
             width = max(poly[:, 0]) - min(poly[:, 0])
 
-            if ignores[i] or min(height, width) < self.min_text_size:
+            if ignore[i] or min(height, width) < self.min_text_size:
                 cv2.fillPoly(mask, poly.astype(
                     np.int32)[np.newaxis, :, :], 0)
-
+                ignore[i] = True
             else:
                 polygon_shape = Polygon(poly)
                 distance = polygon_shape.area * \
@@ -50,19 +50,20 @@ class MakeSegMap:
                 if len(shrinked) == 0:
                     cv2.fillPoly(mask, poly.astype(
                         np.int32)[np.newaxis, :, :], 0)
+                    ignore[i] = True
                     continue
                 shrinked = np.array(shrinked[0]).reshape(-1, 2)
                 cv2.fillPoly(gt, [shrinked.astype(np.int32)], 1)
         return img, gt, mask
 
-    def validate_polygons(self, polygons, h, w):
+    def validate_polygons(self, polygons, ignore, h, w):
         '''
         polygons (numpy.array, required): of shape (num_instances, num_points, 2)
         '''
         if len(polygons) == 0:
-            return polygons
-        # assert len(polygons) == len(ignore_tags)
-        ignore_tags = [False] * len(polygons)
+            return polygons, ignore
+        assert len(polygons) == len(ignore)
+        # ignore_tags = [False] * len(polygons)
         for polygon in polygons:
             polygon[:, 0] = np.clip(polygon[:, 0], 0, w - 1)
             polygon[:, 1] = np.clip(polygon[:, 1], 0, h - 1)
@@ -70,10 +71,10 @@ class MakeSegMap:
         for i in range(len(polygons)):
             area = self.polygon_area(polygons[i])
             if abs(area) < 1:
-                ignore_tags[i] = True
+                ignore[i] = True
             if area > 0:
                 polygons[i] = polygons[i][::-1, :]
-        return polygons, ignore_tags
+        return polygons, ignore
 
     def polygon_area(self, polygon):
         edge = 0

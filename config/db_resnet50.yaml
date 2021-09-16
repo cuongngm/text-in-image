@@ -1,5 +1,5 @@
 base:
-  algorithm: DB
+  algorithm: DBnet
   save_dir: saved
   gpu_id: 0,1
   ckpt_file: checkpoint/model_best.pth
@@ -7,15 +7,15 @@ dataset:
   type: CTW1500
   crop_shape: [736, 736]
   train_load:
-    train_img_dir: 'dataset/CTW1500/train/img'
-    train_label_dir: 'dataset/CTW1500/train/gt'
+    train_img_dir: '/data/cuongnm1/dataset/CTW1500/train/img'
+    train_label_dir: '/data/cuongnm1/dataset/CTW1500/train/gt'
     batch_size: 4
     num_workers: 4
   test_load:
-    test_img_dir: 'dataset/CTW1500/test/img'
-    test_label_dir: 'dataset/CTW1500/test/gt'
+    test_img_dir: '/data/cuongnm1/dataset/CTW1500/test/img'
+    test_label_dir: '/data/cuongnm1/dataset/CTW1500/test/gt'
     batch_size: 1
-    num_workers: 4
+    num_workers: 0
   function: src.loader.detection.det_loader,DetLoader
 model:
   backbone:
@@ -52,9 +52,9 @@ post_process:
   function: src.model.detection.postprocess,DBPostProcess
 trainer:
   num_epoch: 100
-  distributed: True
+  distributed: False
   local_world_size: 2
-  local_rank: -1
+  local_rank: 0
   num_class: 2
   log_iter: 50
 metric:

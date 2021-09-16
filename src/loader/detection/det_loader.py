@@ -37,6 +37,7 @@ class DetLoader(Dataset):
             img_path = os.path.join(img_dir, img_name)
             img_list.append(img_path)
             polys = []
+            ignore = []
             label_name = img_name.replace('.jpg', '.txt')
             # label_name = 'gt_' + label_name
             with open(os.path.join(label_dir, label_name), 'r', encoding='utf-8') as file:
@@ -47,13 +48,15 @@ class DetLoader(Dataset):
                         # x1, y1, x2, y2, ..., xn, yn
                         poly = list(map(int, poly))
                         polys.append(poly)
+                        ignore.append(False)
                     elif self.dataset_type == 'ICDAR':
                         # x1, y1, x2, y2, x3, y3, x4, y4, transcripts
                         poly = poly[:8]
                         poly = list(map(int, poly))
                         polys.append(poly)
+                        ignore.append(False)
             # label_list.append([np.array(polys), tags])
-            label_list.append(polys)
+            label_list.append([polys, ignore])
         assert len(img_list) == len(label_list), 'image with label not correct'
         return img_list, label_list
 
@@ -82,17 +85,18 @@ class DetLoader(Dataset):
 
     def __getitem__(self, idx):
         img_path = self.img_list[idx]
-        polys = self.label_list[idx]
+        polys = self.label_list[idx][0]
+        ignore = self.label_list[idx][1]
         img = cv2.imread(img_path)
         if self.is_training:
             # augment
             img, polys = self.aug.random_scale(img, polys, self.crop_shape[0])
             img, polys = self.aug.random_rotate(img, polys)
             img, polys = self.aug.random_flip(img, polys)
-            img, polys = self.aug.random_crop_db(img, polys)
+            img, polys, ignore = self.aug.random_crop_db(img, polys, ignore)
             # make segment map, make border map
-            img, gt, gt_mask = self.MSM.process(img, polys)
-            img, thresh_map, thresh_mask = self.MBM.process(img, polys)
+            img, gt, gt_mask = self.MSM.process(img, polys, ignore)
+            img, thresh_map, thresh_mask = self.MBM.process(img, polys, ignore)
 
             img = Image.fromarray(img).convert('RGB')
             img = transforms.ColorJitter(brightness=32.0/255, saturation=0.5)(img)
@@ -108,8 +112,7 @@ class DetLoader(Dataset):
                 'gt': gt,
                 'gt_mask': gt_mask,
                 'thresh_map': thresh_map,
-                'thresh_mask': thresh_mask,
-                'polys': polys
+                'thresh_mask': thresh_mask
             }
         else:
             img, polys = self.test_resize(img, polys, pad=True)

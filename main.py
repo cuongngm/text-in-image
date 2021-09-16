@@ -2,15 +2,31 @@ import yaml
 import matplotlib.pyplot as plt
 import cv2
 import numpy as np
+from torch.utils.data import DataLoader
 from src.loader.detection.det_loader import DetLoader
 from src.utils.utils_function import read_json
 
 with open('config/db_resnet50.yaml', 'r') as stream:
     cfg = yaml.safe_load(stream)
+
+train_dataset = DetLoader(cfg, is_training=True)
+train_loader = DataLoader(train_dataset, shuffle=True, batch_size=4)
+# test_dataset = DetLoader(cfg, is_training=False)
+# test_loader = DataLoader(test_dataset, shuffle=False, batch_size=1)
+sample = next(iter(train_loader))
+print(sample['img'].size())
 """
-train_dataset = DetLoader(cfg, is_training=False)
-# train_loader = DataLoader(train_dataset, shuffle=True, batch_size=4)
-# samples = next(iter(train_dataset))
+for idx, samples in enumerate(train_loader):
+    for batch in samples:
+        print('img', batch['img'].size())
+        print('gt', batch['gt'].size())
+        print('gt_mask', batch['gt_mask'].size())
+        print('thresh_map', batch['thresh_map'].size())
+        print('thresh_mask', batch['thresh_mask'].size())
+    if idx == 10:
+        break
+    
+
 samples = train_dataset[23]
 img = samples['img']
 

@@ -7,12 +7,12 @@ import pyclipper
 # postprocessing
 class DBPostProcess:
     def __init__(self, config):
-        self.thresh = config['postprocess']['thresh']
-        self.box_thresh = config['postprocess']['box_thresh']
-        self.max_candidates = config['postprocess']['max_candidates']
-        self.is_poly = config['postprocess']['is_poly']
-        self.unclip_ratio = config['postprocess']['unclip_ratio']
-        self.min_size = config['postprocess']['min_size']
+        self.thresh = config['post_process']['thresh']
+        self.box_thresh = config['post_process']['box_thresh']
+        self.max_candidates = config['post_process']['max_candidates']
+        self.is_poly = config['post_process']['is_poly']
+        self.unclip_ratio = config['post_process']['unclip_ratio']
+        self.min_size = config['post_process']['min_size']
 
     def __call__(self, batch, pred, is_output_polygon=False):
         """

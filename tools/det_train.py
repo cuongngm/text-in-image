@@ -21,10 +21,12 @@ warnings.filterwarnings('ignore')
 def get_data_loader(cfg, logger):
     train_dataset = create_module(cfg['dataset']['function'])(cfg, is_training=True)
     test_dataset = create_module(cfg['dataset']['function'])(cfg, is_training=False)
+    # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    # test_sampler = torch.utils.data.distributed.DistributedSampler(test_dataset)
     train_loader = DataLoader(train_dataset, batch_size=cfg['dataset']['train_load']['batch_size'],
-                              shuffle=True, num_workers=cfg['dataset']['train_load']['num_workers'])
+                              shuffle=False, num_workers=cfg['dataset']['train_load']['num_workers'])
     test_loader = DataLoader(test_dataset, batch_size=cfg['dataset']['test_load']['batch_size'],
-                             shuffle=True, num_workers=cfg['dataset']['test_load']['num_workers'])
+                             shuffle=False, num_workers=cfg['dataset']['test_load']['num_workers'])
     logger.info('Loaded successful!. Train datasets: {}, test datasets: {}'.format(len(train_dataset), len(test_dataset)))
     return train_loader, test_loader
 
@@ -41,27 +43,17 @@ class TrainerDet:
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.distributed = config['trainer']['distributed']
-        local_world_size = config['trainer']['local_world_size']
-        if config['distributed']:
-            logger.info('Distributed GPU training model start...')
-            if torch.cuda.is_available():
-                if torch.cuda.device_count() < local_world_size:
-                    raise RuntimeError(f'the number of GPU ({torch.cuda.device_count()}) is less than'
-                                       f'the number of process ({local_world_size}) running on each node')
-            else:
-                raise RuntimeError('CUDA is not available, Distributed training is not supported')
-            dist.init_process_group(backend='nccl', init_method='env://')
-            logger.info(f'[Process {os.getpid()}] world_size = {dist.get_world_size()}, '
-                        + f'rank = {dist.get_rank()}, backend={dist.get_backend()}')
+        if self.distributed:
+            self.local_master = (args.local_rank == 0)
+            self.global_master = (dist.get_rank() == 0)
         else:
-            logger.info('One GPU or CPU training mode start...')
-            if local_world_size != 1:
-                raise RuntimeError('local_world_size must set be to 1, if distributed is set to false')
+            self.local_master = True
+            self.global_master = True
 
+        
         self.logger = logger
         self.save_model_dir = save_model_dir
-        self.device, self.device_ids = self.prepare_device(config['trainer']['local_rank'],
-                                                           config['trainer']['local_world_size'])
+        self.device, self.device_ids = self.prepare_device(args.local_rank, args.local_world_size)
         self.model = model.to(self.device)
         self.optimizer = optimizer
         self.criterion = criterion
@@ -73,8 +65,8 @@ class TrainerDet:
         self.start_epoch = 1
         self.epochs = config['trainer']['num_epoch']
         self.config = config
-        if config['trainer']['sync_batch_norm'] and self.distributed:
-            self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
+        # if config['trainer']['sync_batch_norm'] and self.distributed:
+        #     self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
         if self.distributed:
             self.model = DDP(self.model, device_ids=self.device_ids, output_device=self.device_ids[0],
                              find_unused_parameters=True)
@@ -98,6 +90,7 @@ class TrainerDet:
             torch.cuda.empty_cache()
             self.logger.info('Training in epoch: {}/{}'.format(epoch, self.epochs))
             train_loss = self.train_epoch(epoch)
+            train_loss = train_loss.item()
             self.logger.info('Train loss: {}', train_loss)
             recall, precision, hmean = self.test_epoch()
             self.logger.info('Test: Recall: {} - Precision:{} - Hmean: {}'.format(recall, precision, hmean))
@@ -126,8 +119,8 @@ class TrainerDet:
         self.model.train()
         train_loss = 0
         for idx, batch in enumerate(self.train_loader):
-            lr = self.optimizer.param_group[0]['lr']
-            running_metric_text = self.running_metric_text.reset()
+            lr = self.optimizer.param_groups[0]['lr']
+            # running_metric_text = self.running_metric_text.reset()
             batch = dict_to_device(batch, device=self.device)
             preds = self.model(batch['img'])
             assert preds.size(1) == 3
@@ -135,11 +128,11 @@ class TrainerDet:
                                   batch['thresh_map'], batch['thresh_mask']])
             total_loss = self.criterion(preds, _batch)
             self.optimizer.zero_grad()
-            total_loss.backwark()
+            total_loss.backward()
             self.optimizer.step()
             score_shrink_map = cal_text_score(preds[:, 0, :, :],
                                               batch['gt'], batch['gt_mask'],
-                                              running_metric_text)
+                                              self.running_metric_text)
             train_loss += total_loss
             acc = score_shrink_map['Mean Acc']
             iou_shrink_map = score_shrink_map['Mean IoU']
@@ -168,6 +161,7 @@ class TrainerDet:
         if self.distributed:
             ngpu_per_process = torch.cuda.device_count() // local_world_size
             device_ids = list(range(local_rank * ngpu_per_process, (local_rank + 1) * ngpu_per_process))
+            print('device_ids', device_ids)
             if torch.cuda.is_available() and local_rank != -1:
                 torch.cuda.set_device(device_ids[0])
                 device = 'cuda'
@@ -190,10 +184,10 @@ class TrainerDet:
                 self.logger.warning('Warning: The number of GPU\'s configured to use is {},'
                                     'but only {} is available'.format(n_gpu_use, n_gpu))
                 n_gpu_use = n_gpu
-            list_ids = list(range(n_gpu_use))
+            list_ids = list(range(n_gpu))
             if n_gpu_use > 0:
-                torch.cuda.set_device(list_ids[0])
-                self.logger.warning(f'Training is using GPU {list_ids[0]}!')
+                torch.cuda.set_device(list_ids[1])
+                self.logger.warning(f'Training is using GPU {list_ids[1]}!')
                 device = 'cuda'
             else:
                 self.logger.warning('Training is using GPU!')
@@ -215,6 +209,30 @@ def main(args):
     save_model_dir.mkdir(parents=True, exist_ok=True)
     setup_logging(log_dir)
     logger = get_logger('train')
+    
+    local_rank = args.local_rank
+    local_world_size = args.local_world_size
+    if cfg['trainer']['distributed']:
+        logger.info('Distributed GPU training model start...')
+        if torch.cuda.is_available():
+            if torch.cuda.device_count() < local_world_size:
+                raise RuntimeError(f'the number of GPU ({torch.cuda.device_count()}) is less than'
+                                   f'the number of process ({local_world_size}) running on each node')
+            
+        else:
+            raise RuntimeError('CUDA is not available, Distributed training is not supported')
+    else:
+        logger.info('One GPU or CPU training mode start...')
+        if local_world_size != 1:
+            raise RuntimeError('local_world_size must set be to 1, if distributed is set to false')
+        local_rank = 0
+        global_rank = 0
+    
+    if cfg['trainer']['distributed']:
+        dist.init_process_group(backend='nccl', init_method='env://')
+        global_rank = dist.get_rank()
+        logger.info(f'[Process {os.getpid()}] world_size = {dist.get_world_size()}, ' + f'rank = {dist.get_rank()}, backend={dist.get_backend()}')
+
 
     # create train, test loader
     train_loader, test_loader = get_data_loader(cfg, logger)
@@ -235,6 +253,8 @@ def main(args):
 def parse_args():
     parser = argparse.ArgumentParser(description='Hyper_parameter')
     parser.add_argument('--config', type=str, default='config/db_resnet50.yaml', help='config path')
+    parser.add_argument('--local_rank', type=int, default=0, help='local_rank')
+    parser.add_argument('--local_world_size', type=int, default=1, help='local_world_size')
     parser.add_argument('--resume', type=bool, default=False, help='resume from checkpoint')
     args = parser.parse_args()
     return args

@@ -29,8 +29,12 @@ class RandomCropData:
         self.min_crop_side_ratio = min_crop_side_ratio
         self.max_tries = max_tries
 
-    def process(self, img, polys):
-        crop_x, crop_y, crop_w, crop_h = self.crop_area(img, polys)
+    def process(self, img, polys, ignore):
+        all_care_polys = []
+        for i in range(len(ignore)):
+            if ignore[i] is False:
+                all_care_polys.append(polys[i])
+        crop_x, crop_y, crop_w, crop_h = self.crop_area(img, all_care_polys)
         scale_w = self.size[0] / crop_w
         scale_h = self.size[1] / crop_h
         scale = min(scale_w, scale_h)
@@ -43,13 +47,15 @@ class RandomCropData:
         img = padimg
 
         new_polys = []
+        new_ignore = []
         for i in range(len(polys)):
             poly = polys[i]
             poly = ((np.array(poly) -
                      (crop_x, crop_y)) * scale)
             if not self.is_poly_outside_rect(poly, 0, 0, w, h):
                 new_polys.append(poly)
-        return img, new_polys
+                new_ignore.append(ignore[i])
+        return img, new_polys, new_ignore
 
     def is_poly_in_rect(self, poly, x, y, w, h):
         poly = np.array(poly)
@@ -207,6 +213,6 @@ class DetAugment:
             new_polys = polys
         return img, new_polys
 
-    def random_crop_db(self, img, polys):
-        img, new_polys = self.random_crop_data.process(img, polys)
-        return img, new_polys
+    def random_crop_db(self, img, polys, ignore):
+        img, new_polys, new_ignore = self.random_crop_data.process(img, polys, ignore)
+        return img, new_polys, new_ignore

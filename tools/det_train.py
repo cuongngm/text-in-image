@@ -12,6 +12,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import sys
 sys.path.append('./')
+from ultocr.model.optimizer import adjust_learning_rate
 from ultocr.utils.utils_function import create_module, save_checkpoint, dict_to_device
 from ultocr.utils.det_metrics import runningScore, cal_text_score, QuadMetric
 from ultocr.logger.logger import setup_logging
@@ -90,8 +91,7 @@ class TrainerDet:
             torch.cuda.empty_cache()
             self.logger.info('Training in epoch: {}/{}'.format(epoch, self.epochs))
             train_loss = self.train_epoch(epoch)
-            train_loss = train_loss.item()
-            self.logger.info('Train loss: {}', train_loss)
+            self.logger.info('Train loss: {}'.format(train_loss))
             recall, precision, hmean = self.test_epoch()
             self.logger.info('Test: Recall: {} - Precision:{} - Hmean: {}'.format(recall, precision, hmean))
             if hmean > best_hmean:
@@ -126,9 +126,10 @@ class TrainerDet:
             assert preds.size(1) == 3
             _batch = torch.stack([batch['gt'], batch['gt_mask'],
                                   batch['thresh_map'], batch['thresh_mask']])
-            total_loss = self.criterion(preds, _batch)
+            loss = self.criterion(preds, _batch)
             self.optimizer.zero_grad()
-            total_loss.backward()
+            loss.backward()
+            total_loss = loss.item()
             self.optimizer.step()
             score_shrink_map = cal_text_score(preds[:, 0, :, :],
                                               batch['gt'], batch['gt_mask'],
@@ -186,7 +187,7 @@ class TrainerDet:
                 n_gpu_use = n_gpu
             list_ids = list(range(n_gpu))
             if n_gpu_use > 0:
-                torch.cuda.set_device(list_ids[1])
+                torch.cuda.set_device(list_ids[0])
                 self.logger.warning(f'Training is using GPU {list_ids[1]}!')
                 device = 'cuda'
             else:

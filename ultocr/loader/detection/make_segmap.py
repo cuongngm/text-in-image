@@ -47,7 +47,7 @@ class MakeSegMap:
                 padding.AddPath(subject, pyclipper.JT_ROUND,
                                 pyclipper.ET_CLOSEDPOLYGON)
                 shrinked = padding.Execute(-distance)
-                if len(shrinked) == 0:
+                if shrinked == []:
                     cv2.fillPoly(mask, poly.astype(
                         np.int32)[np.newaxis, :, :], 0)
                     ignore[i] = True

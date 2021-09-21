@@ -324,7 +324,7 @@ class QuadMetric:
         pred_polygons_batch = np.array(output[0])
         pred_scores_batch = np.array(output[1])
         gt_polygons_batch = to_list_tuples_coords(batch['polys'])
-        ignore_tags_batch = [i[0].tolist() for i in batch['ignore']]
+        ignore_tags_batch = [i[0].tolist() for i in batch['ignore_tags']]
         gt = []
         for gt_polygon, ignore_tag in zip(gt_polygons_batch, ignore_tags_batch):
             gt.append({'points': gt_polygon, 'ignore': ignore_tag})

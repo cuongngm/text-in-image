@@ -43,7 +43,7 @@ optimizer:
 scheduler:
   factor: 0.9
 post_process:
-  thresh: 0.3
+  thresh: 0.25
   box_thresh: 0.5
   max_candidates: 1000
   is_poly: False

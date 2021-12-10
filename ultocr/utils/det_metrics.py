@@ -77,9 +77,11 @@ def cal_text_score(texts, gt_texts, training_masks,
 def to_list_tuples_coords(anns):
     new_anns = []
     for ann in anns:
+        ann = ann.reshape(-1, 2)
         points = []
         for x, y in ann:
-            points.append((x[0].tolist(), y[0].tolist()))
+            # points.append((x[0].tolist(), y[0].tolist()))
+            points.append((x, y))
         new_anns.append(points)
     return new_anns
 

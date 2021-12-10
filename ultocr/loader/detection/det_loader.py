@@ -121,5 +121,6 @@ class DetLoader(Dataset):
             data = {
                 'img': img,
                 'polys': polys,
+                'ignore': ignore
             }
         return data

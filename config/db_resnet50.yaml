@@ -1,22 +1,26 @@
 base:
+  model_type: text_detection 
   algorithm: DBnet
   save_dir: saved
   gpu_id: 0,1
+  resume: False
   ckpt_file: checkpoint/model_best.pth
+
 dataset:
   type: CTW1500
   crop_shape: [736, 736]
   train_load:
-    train_img_dir: '/data/cuongnm1/dataset/CTW1500/train/img'
-    train_label_dir: '/data/cuongnm1/dataset/CTW1500/train/gt'
+    train_img_dir: 'data/CTW1500/train/img'
+    train_label_dir: 'data/CTW1500/train/gt'
     batch_size: 4
     num_workers: 4
   test_load:
-    test_img_dir: '/data/cuongnm1/dataset/CTW1500/test/img'
-    test_label_dir: '/data/cuongnm1/dataset/CTW1500/test/gt'
+    test_img_dir: 'data/CTW1500/test/img'
+    test_label_dir: 'data/CTW1500/test/gt'
     batch_size: 1
     num_workers: 0
   function: ultocr.loader.detection.det_loader,DetLoader
+
 model:
   backbone:
     pretrained: False
@@ -31,17 +35,21 @@ model:
     adaptive: True
     function: ultocr.model.detection.segout,SegDetector
   function: ultocr.model.detection.db_net,DBNet
+
 loss:
   function: ultocr.model.loss,DBLoss
   l1_scale: 1
   bce_scale: 10
+
 optimizer:
   base_lr: 0.007
   weight_decay: 0.0001
   momentum: 0.9
   function: ultocr.model.optimizer,SGDDecay
+
 scheduler:
   factor: 0.9
+
 post_process:
   thresh: 0.3
   box_thresh: 0.5
@@ -50,6 +58,11 @@ post_process:
   unclip_ratio: 1.5
   min_size: 3
   function: ultocr.model.detection.postprocess,DBPostProcess
+
+metric:
+  thresh_text_score: 0.25
+  is_output_polygon: False
+
 trainer:
   num_epoch: 100
   distributed: False
@@ -57,7 +70,5 @@ trainer:
   local_rank: 0
   num_class: 2
   log_iter: 50
-metric:
-  thresh_text_score: 0.25
-  is_output_polygon: False
+
 

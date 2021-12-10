@@ -1,13 +1,29 @@
+base:
+  model_type: text_recognition
+  algorithm: MASTER
+  save_dir: saved
+  gpu_id: 0,1
+  resume: False
+  ckpt_file: checkpoint/model_best.pth
+
 dataset:
-  img_w: 256
-  img_h: 32
+  crop_shape: [256, 32]
+  train_load:
+    train_img_dir: 'dataset/..'
+    train_label_dir: 'dataset/..'
+    batch_size: 16
+    num_workers: 4
+  test_load:
+    test_img_dir: 'dataset/..'
+    test_label_dir: 'dataset/..'
+    batch_size: 16
+    num_workers: 4
   case_sensitive: False
   to_gray: False
-  transform: 'Resize'
+  transform: Resize
   target_transform: None
-  train_txt_file: '/data/cuongnm1/dataset/..'
-  val_txt_file: 'data/cuongnm1/dataset/..'
-  img_root: '/data/cuongnm1/dataset/..'
+  function: ultocr.loader.recognition.reg_loader, RegLoader
+
 model_arch:
   gcb:
     in_channels: 32
@@ -33,6 +49,7 @@ model_arch:
     dropout: 0.2
     ff_dim: 2048
     share_parameter: False
+
 functional:
   load_data: ultocr.loader.reg_loader,TextDataset
   conv_embedding_gc: ultocr.model.common.resnet,ConvEmbeddingGC
@@ -42,24 +59,17 @@ functional:
   position: ultocr.model.common.transformer,PositionEncoding
   generator: ultocr.model.recognition.master,Generator
   master: ultocr.model.recognition.master,MASTER
-train_loader:
-  batch_size: 32
-  shuffle: True
-  drop_last: True
-  num_workers: 8
-val_loader:
-  batch_size: 32
-  shuffle: False
-  drop_last: False
-  num_workers: -1
+
 optimizer:
   type: 'Adam'
   functional: ultocr.model.optimizer,Adam
   lr: 0.0004
+
 lr_scheduler:
   type: 'StepLR'
   step_size: 30
   gamma: 0.1
+
 trainer:
   epochs: 100
   do_validation: True
@@ -73,6 +83,5 @@ trainer:
   local_rank: -1
   global_rank: -1
   early_stop: -1
-  resume: False
-  resume_path: ''
+
 

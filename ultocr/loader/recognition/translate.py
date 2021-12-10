@@ -19,7 +19,7 @@ class LabelConverter:
                 classes = classes.strip()
                 cls_list = list(classes)
         self.alphabet = cls_list
-        self.alphabet_mapper = {'<EOS>': 1, '<SOS>': 2, '<PAD>': 0, '<UNk>': 3}
+        self.alphabet_mapper = {'<EOS>': 1, '<SOS>': 2, '<PAD>': 0, '<UNK>': 3}
         for i, item in enumerate(self.alphabet):
             self.alphabet_mapper[item] = i + 4
         self.alphabet_inverse_mapper = {v: k for k, v in self.alphabet_mapper.items()}
@@ -63,5 +63,5 @@ class LabelConverter:
         return texts
 
 
-LabelTransformer = LabelConverter(Path(__file__).parent.joinpath('keysVN.txt'),
+LabelTransformer = LabelConverter(Path(__file__).parent.joinpath('dictionary/keysVN.txt'),
                                   max_length=100, ignore_over=False)

@@ -15,7 +15,6 @@ train_loader = DataLoader(train_dataset, shuffle=True, batch_size=4)
 # test_loader = DataLoader(test_dataset, shuffle=False, batch_size=1)
 sample = next(iter(train_loader))
 print(sample['img'].size())
-"""
 for idx, samples in enumerate(train_loader):
     for batch in samples:
         print('img', batch['img'].size())
@@ -76,4 +75,3 @@ for poly in polys:
     img = cv2.polylines(img, np.int32([poly]), isClosed=True, color=(255, 0, 0), thickness=2)
 plt.imshow(img)
 plt.show()
-"""

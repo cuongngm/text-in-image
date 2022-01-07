@@ -7,7 +7,7 @@ base:
   ckpt_file: checkpoint/model_best.pth
 
 dataset:
-  crop_shape: [256, 32]
+  new_shape: [256, 32]
   train_load:
     train_img_dir: 'dataset/..'
     train_label_dir: 'dataset/..'
@@ -18,10 +18,11 @@ dataset:
     test_label_dir: 'dataset/..'
     batch_size: 16
     num_workers: 4
-  case_sensitive: False
-  to_gray: False
-  transform: Resize
-  target_transform: None
+  preprocess:
+    case_sensitive: False
+    to_gray: False
+    transform: Resize
+    target_transform: None
   function: ultocr.loader.recognition.reg_loader, RegLoader
 
 model_arch:

@@ -18,7 +18,7 @@ from ultocr.utils.utils_function import create_module
 
 
 class TrainerReg:
-    def __init__(self, model, optimizer, train_loader, val_loader, lr_scheduler, max_len_step, cfg, logger):
+    def __init__(self, train_loader, val_loader, model, optimizer, criterion, post_process, logger, save_model_dir, cfg):
         self.config = cfg
         self.distributed = cfg['trainer']['distributed']
         if self.distributed:
@@ -45,13 +45,13 @@ class TrainerReg:
         if self.distributed:
             self.model = DDP(self.model, device_ids=self.device_ids, output_device=self.device_ids[0],
                              find_unused_parameters=True)
-        self.len_step = max_len_step
+        self.len_step = None
         self.train_loader = train_loader
         self.val_loader = val_loader
 
         self.do_validation = (self.val_loader is not None and cfg['trainer']['do_validation'])
         self.validation_epoch = cfg['trainer']['validation_epoch']
-        self.lr_scheduler = lr_scheduler
+        self.lr_scheduler = None
 
         log_step = cfg['trainer']['log_step_interval']
         self.log_step = log_step

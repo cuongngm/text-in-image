@@ -2,9 +2,7 @@ import os
 import cv2
 import numpy as np
 from PIL import Image
-import torch
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
 from ultocr.loader.augment import DetAugment
 from ultocr.loader.detection.make_segmap import MakeSegMap
 from ultocr.loader.detection.make_bordermap import MakeBorderMap
@@ -13,7 +11,7 @@ from ultocr.loader.detection.make_bordermap import MakeBorderMap
 class DetLoader(Dataset):
     def __init__(self, config, is_training=True):
         super().__init__()
-        self.crop_shape = config['dataset']['crop_shape']
+        self.crop_shape = config['dataset']['new_shape']
         self.dataset_type = config['dataset']['type']
         assert self.dataset_type in ['CTW1500', 'ICDAR'], 'data type is not correct'
         self.is_training = is_training
@@ -97,7 +95,7 @@ class DetLoader(Dataset):
             # make segment map, make border map
             img, gt, gt_mask = self.MSM.process(img, polys, ignore)
             img, thresh_map, thresh_mask = self.MBM.process(img, polys, ignore)
-
+            """
             img = Image.fromarray(img).convert('RGB')
             img = transforms.ColorJitter(brightness=32.0/255, saturation=0.5)(img)
             img = self.aug.normalize_img(img)
@@ -106,7 +104,7 @@ class DetLoader(Dataset):
             gt_mask = torch.from_numpy(gt_mask).float()
             thresh_map = torch.from_numpy(thresh_map).float()
             thresh_mask = torch.from_numpy(thresh_mask).float()
-
+            """
             data = {
                 'img': img,
                 'gt': gt,

@@ -1,6 +1,8 @@
+import os
 import numpy as np
 from tqdm import tqdm
 import torch
+import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from ultocr.utils.utils_function import create_module, save_checkpoint, dict_to_device
 from ultocr.utils.det_metrics import runningScore, cal_text_score, QuadMetric
@@ -12,17 +14,11 @@ class TrainerDet:
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.distributed = config['trainer']['distributed']
-        if self.distributed:
-            self.local_master = (config['trainer']['local_rank'] == 0)
-            self.global_master = (dist.get_rank() == 0)
-        else:
-            self.local_master = True
-            self.global_master = True
 
-        
         self.logger = logger
         self.save_model_dir = save_model_dir
-        self.device, self.device_ids = self.prepare_device(config['trainer']['local_rank'], config['trainer']['local_world_size'])
+        self.device, self.device_ids = self.prepare_device(config['trainer']['local_rank'],
+                                                           config['trainer']['local_world_size'])
         self.model = model.to(self.device)
         self.optimizer = optimizer
         self.criterion = criterion

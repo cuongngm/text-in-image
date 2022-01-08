@@ -5,7 +5,7 @@ import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from ultocr.utils.utils_function import create_module, save_checkpoint, dict_to_device
-from ultocr.utils.det_metrics import runningScore, cal_text_score, QuadMetric
+from ultocr.metrics.det_metrics import runningScore, cal_text_score, QuadMetric
 
 
 class TrainerDet:
@@ -23,9 +23,9 @@ class TrainerDet:
         self.optimizer = optimizer
         self.criterion = criterion
         self.post_process = post_process
-        self.batch_shape = {'shape': [(config['dataset']['crop_shape'][0], config['dataset']['crop_shape'][1])]}
+        self.batch_shape = {'shape': [(config['dataset']['new_shape'][0], config['dataset']['new_shape'][1])]}
         self.metric_cls = QuadMetric()
-        self.running_metric_text = runningScore(config['trainer']['num_class'])
+        self.running_metric_text = runningScore(2)
 
         self.start_epoch = 1
         self.epochs = config['trainer']['num_epoch']
@@ -36,7 +36,7 @@ class TrainerDet:
             self.model = DDP(self.model, device_ids=self.device_ids, output_device=self.device_ids[0],
                              find_unused_parameters=True)
 
-        if config['base']['resume']:
+        if config['trainer']['resume']:
             assert os.path.isfile(config['base']['ckpt_file']), 'checkpoint path is not correct'
             logger.info('Resume from checkpoint: {}'.format(config['base']['ckpt_file']))
             checkpoint = torch.load(config['base']['ckpt_file'])

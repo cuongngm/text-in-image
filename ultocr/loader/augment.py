@@ -216,3 +216,4 @@ class DetAugment:
     def random_crop_db(self, img, polys, ignore):
         img, new_polys, new_ignore = self.random_crop_data.process(img, polys, ignore)
         return img, new_polys, new_ignore
+

@@ -5,22 +5,22 @@ base:
   gpu_id: 0,1
 
 dataset:
-  type: CTW1500
+  type: 'four_point'
   new_shape: [736, 736]
   train_load:
-    train_img_dir: 'dataset/CTW1500/train/img'
-    train_label_dir: 'dataset/CTW1500/train/gt'
+    train_img_dir: 'dataset/ICDAR2015/train/img'
+    train_label_dir: 'dataset/ICDAR2015/train/gt'
     batch_size: 4
     num_workers: 4
   test_load:
-    test_img_dir: 'dataset/CTW1500/test/img'
-    test_label_dir: 'dataset/CTW1500/test/gt'
+    test_img_dir: 'dataset/ICDAR2015/test/img'
+    test_label_dir: 'dataset/ICDAR2015/test/gt'
     batch_size: 1
     num_workers: 0
   preprocess: None
   function: ultocr.loader.detection.det_loader,DetLoader
 
-model_arch:
+model:
   backbone:
     pretrained: False
     function: ultocr.model.common.resnet_dcn,resnet50
@@ -66,11 +66,10 @@ trainer:
   resume: False
   ckpt_file: checkpoint/model_best.pth
   num_epoch: 100
-  distributed: True
-  local_world_size: 2
-  local_rank: -1
-  global_rank: -1
-  num_class: 2
+  distributed: False
+  local_world_size: 1
+  local_rank: 0
+  global_rank: 0
   log_iter: 50
 
 

@@ -20,6 +20,7 @@ warnings.filterwarnings('ignore')
 def get_data_loader(cfg, logger):
     train_dataset = create_module(cfg['dataset']['function'])(cfg, is_training=True)
     test_dataset = create_module(cfg['dataset']['function'])(cfg, is_training=False)
+    
     if cfg['trainer']['distributed']:
         train_sampler = DistributedSampler(train_dataset)
         test_sampler = DistributedSampler(test_dataset)
@@ -110,6 +111,7 @@ def main(args):
 def parse_args():
     parser = argparse.ArgumentParser(description='Hyper_parameter')
     parser.add_argument('--config', type=str, default='config/db_resnet50.yaml', help='config path')
+    parser.add_argument('--local_rank', type=int, default=0)
     parser.add_argument('--resume', type=bool, default=False, help='resume from checkpoint')
     args = parser.parse_args()
     return args

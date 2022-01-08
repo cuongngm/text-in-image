@@ -54,7 +54,7 @@ class runningScore(object):
 
 
 def cal_text_score(texts, gt_texts, training_masks,
-                   running_metric_text, thresh=0.25):
+                   running_metric_text, thresh=0.3):
     """
     :param texts:  pred_prob_map
     :param gt_texts: gt_prob_map

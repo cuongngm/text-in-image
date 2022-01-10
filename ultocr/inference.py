@@ -1,4 +1,5 @@
 import cv2
+import argparse
 import yaml
 import numpy as np
 from PIL import Image
@@ -6,7 +7,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader
 from ultocr.utils.utils_function import create_module
-from ultocr.utils.det_utils import four_point_transform, sort_by_line, test_preprocess
+from ultocr.utils.det_utils import four_point_transform, sort_by_line, test_preprocess, draw_bbox
 from ultocr.utils.reg_utils import ResizeWeight, ConvertLabelToMASTER, greedy_decode_with_probability
 
 
@@ -14,7 +15,7 @@ class Detection:
     def __init__(self, cfg):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model = create_module(cfg['model']['function'])(cfg)
-        model.load_state_dict(torch.load('saved/weight/best_cp.pth', map_location=self.device))
+        model.load_state_dict(torch.load('saved/ckpt/DBnet/0108_112716/best_cp.pth', map_location=self.device)['state_dict'])
         self.model = model.to(self.device)
         self.model.eval()
         self.seg_obj = create_module(cfg['post_process']['function'])(cfg)
@@ -30,7 +31,7 @@ class Detection:
         batch = {'shape': [(h_origin, w_origin)]}
         boxes_list, scores_list = self.seg_obj(batch, preds, is_output_polygon=False)
         boxes_list, scores_list = boxes_list[0].tolist(), scores_list[0]
-
+        img_rs = draw_bbox(img, np.array(boxes_list), color=(0, 0, 255), thickness=1)
         boxes_list.sort(key=lambda x: x[0][1])
         boxes_list_remove = []
         for boxes in boxes_list:
@@ -63,7 +64,7 @@ class Detection:
                 # warped = crop_box(img, boxes)
                 all_warped.append(warped)
 
-            det_result['img'] = img
+            det_result['img'] = img_rs
             det_result['box_coordinate'] = after_sort
             det_result['boundary_result'] = all_warped
             return det_result
@@ -137,21 +138,23 @@ class Recognition:
 
 
 class End2end:
-    def __init__(self, img_path, det_model='DB', reg_model='MASTER',
+    def __init__(self, img_path, det_model='DB', reg_model=None,
                  det_config='config/db_resnet50.yaml', reg_config='config/master.yaml'):
         self.img_path = img_path
         assert det_model in ['DB'], '{} model is not implement'.format(det_model)
-        assert reg_model in ['MASTER'], '{} model is not implement'.format(reg_model)
+        # assert reg_model in ['MASTER'], '{} model is not implement'.format(reg_model)
         with open(det_config, 'r') as stream:
             det_cfg = yaml.safe_load(stream)
-        with open(reg_config, 'r') as stream:
-            reg_cfg = yaml.safe_load(stream)
         self.detection = Detection(det_cfg)
-        self.recognition = Recognition(reg_cfg)
-
+        if reg_model is not None: 
+            with open(reg_config, 'r') as stream:
+                reg_cfg = yaml.safe_load(stream)
+            self.recognition = Recognition(reg_cfg)
+          
     def get_result(self):
         img = cv2.imread(self.img_path)
         det_result = self.detection.detect(img)
+        """
         all_img_crop = det_result['boundary_result']
         if len(all_img_crop) == 0:
             result = 'khong co text trong anh'
@@ -161,4 +164,6 @@ class End2end:
             img_pil = Image.fromarray(img_crop.astype('uint8'), 'RGB')
             all_img_pil.append(img_pil)
         result = self.recognition.recognize(all_img_pil)
-        return result
+        """
+        return det_result
+

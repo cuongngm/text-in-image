@@ -1,10 +1,13 @@
 import yaml
+import argparse
 import matplotlib.pyplot as plt
 import cv2
+import os
 import numpy as np
 from torch.utils.data import DataLoader
 from ultocr.loader.detection.det_loader import DetLoader
 from ultocr.utils.utils_function import read_json
+from ultocr.inference import End2end
 
 
 def visualize_dbnet():
@@ -58,5 +61,23 @@ def visualize_dbnet():
     plt.show()
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Hyper parameter')
+    parser.add_argument('--image_path', type=str, default='saved/test/input/1.jpg', help='input image path')
+    parser.add_argument('--save_path', type=str, default='saved/test/output/', help='save path')
+    args = parser.parse_args()
+    return args
+
+
 if __name__ == '__main__':
-    visualize_dbnet()
+    import time
+    opt = parse_args()
+    img_path = opt.image_path
+    img_name = img_path.split('/')[-1]
+    result_name = img_name[:-4] + '_rs' + '.jpg'
+    model = End2end(img_path)
+    predict_time = time.time()
+    result = model.get_result()
+    print('predict time:', time.time() - predict_time)
+    img = result['img']
+    cv2.imwrite(os.path.join(opt.save_path, result_name), img)

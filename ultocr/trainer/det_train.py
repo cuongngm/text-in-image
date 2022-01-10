@@ -91,6 +91,7 @@ class TrainerDet:
             assert preds.size(1) == 3
             _batch = torch.stack([batch['gt'], batch['gt_mask'],
                                   batch['thresh_map'], batch['thresh_mask']])
+            
             total_loss = self.criterion(preds, _batch)
             self.optimizer.zero_grad()
             total_loss.backward()

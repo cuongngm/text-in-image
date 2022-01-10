@@ -38,8 +38,8 @@ class DetLoader(Dataset):
             img_list.append(img_path)
             polys = []
             ignore = []
-            label_name = 'gt_' + img_name.replace('.jpg', '.txt')
-            # label_name = 'gt_' + label_name
+            # label_name = 'gt_' + img_name.replace('.jpg', '.txt')
+            label_name = img_name.replace('.jpg', '.txt')
             with open(os.path.join(label_dir, label_name), 'r', encoding='utf-8') as file:
                 lines = file.readlines()
                 for line in lines:

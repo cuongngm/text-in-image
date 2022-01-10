@@ -94,3 +94,17 @@ def test_resize(img, size=640, pad=False):
         new_img = cv2.resize(img, (w, h))
 
     return new_img
+
+
+def draw_bbox(img, result, color=(255, 0, 0), thickness=2):
+    """
+    :input: RGB img
+    """
+    if isinstance(img, str):
+        img = cv2.imread(img)
+    img = img.copy()
+    h, w = img.shape[:2]
+    for point in result:
+        point = point.astype(int)
+        cv2.polylines(img, [point], True, color, thickness)
+    return img

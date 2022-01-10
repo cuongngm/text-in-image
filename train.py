@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 import numpy as np
 from datetime import datetime
+import random
 import os
 import yaml
 import argparse
@@ -11,7 +12,7 @@ from torch.utils.data import DataLoader
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 from ultocr.logger.logger import setup_logging
-from ultocr.utils.utils_function import create_module
+from ultocr.utils.utils_function import create_module, str_to_bool
 from ultocr.trainer.det_train import TrainerDet
 from ultocr.trainer.reg_train import TrainerReg
 warnings.filterwarnings('ignore')
@@ -35,7 +36,6 @@ def get_data_loader(cfg, logger):
         test_loader = DataLoader(test_dataset,
                                  batch_size=cfg['dataset']['test_load']['batch_size'],
                                  shuffle=False, num_workers=cfg['dataset']['test_load']['num_workers'])
-    logger.info('Loaded successful!. Train datasets: {}, test datasets: {}'.format(len(train_dataset), len(test_dataset)))
     return train_loader, test_loader
 
 
@@ -43,6 +43,17 @@ def get_logger(name):
     logger = logging.getLogger(name=name)
     logger.setLevel(logging.DEBUG)
     return logger
+
+
+def fix_random_seed_for_reproduce(seed):
+    # fix random seeds for reproducibility,
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)  # for current gpu
+    torch.cuda.manual_seed_all(seed)  # for all gpu
+    torch.backends.cudnn.benchmark = False  # if benchmark=True, speed up training, and deterministic will set be False
+    torch.backends.cudnn.deterministic = True  # which can slow down training considerably
 
 
 def main(args):
@@ -59,39 +70,48 @@ def main(args):
     setup_logging(log_dir)
     logger = get_logger('train')
 
-    # local_rank = args.local_rank
-    local_world_size = cfg['trainer']['local_world_size']
+    cfg['trainer']['distributed'] = args.use_dist
     if cfg['trainer']['distributed']:
-        logger.info('Distributed GPU training model start...')
+        local_world_size = args.local_world_size
+        cfg['trainer']['local_world_size'] = local_world_size
+    else:
+        local_world_size = cfg['trainer']['local_world_size']
+    
+    if cfg['trainer']['distributed']:
         if torch.cuda.is_available():
             if torch.cuda.device_count() < local_world_size:
                 raise RuntimeError(f'the number of GPU ({torch.cuda.device_count()}) is less than'
                                    f'the number of process ({local_world_size}) running on each node')
-            
+            local_check = (args.local_rank == 0)
+            logger.info('Distributed GPU training model start...') if local_check else None
         else:
             raise RuntimeError('CUDA is not available, Distributed training is not supported')
     else:
-        logger.info('One GPU or CPU training mode start...')
+        local_check = True
+        logger.info('One GPU or CPU training mode start...') if local_check else None
         if local_world_size != 1:
             raise RuntimeError('local_world_size must set be to 1, if distributed is set to false')
         local_rank = 0
         global_rank = 0
     
+    cfg['trainer']['local_check'] = local_check
+    fix_random_seed_for_reproduce(123)
+    
     if cfg['trainer']['distributed']:
         dist.init_process_group(backend='nccl', init_method='env://')
         global_rank = dist.get_rank()
-        logger.info(f'[Process {os.getpid()}] world_size = {dist.get_world_size()}, ' + f'rank = {dist.get_rank()}, backend={dist.get_backend()}')
+        logger.info(f'[Process {os.getpid()}] world_size = {dist.get_world_size()}, ' + f'rank = {dist.get_rank()}, backend={dist.get_backend()}') if local_check else None
 
     # create train, test loader
     train_loader, test_loader = get_data_loader(cfg, logger)
-
+    logger.info('Loaded successful!. Train datasets: {}, test datasets: {}'.format(len(train_loader) * local_world_size * cfg['dataset']['train_load']['batch_size'], len(test_loader) * local_world_size * cfg['dataset']['test_load']['batch_size'])) if local_check else None
     model = create_module(cfg['model']['function'])(cfg)
-    logger.info('Model created, trainable parameters:')
+    logger.info('Model created, trainable parameters:') if local_check else None
     criterion = create_module(cfg['loss']['function'])(cfg['loss']['l1_scale'], cfg['loss']['bce_scale'])
     optimizer = create_module(cfg['optimizer']['function'])(cfg, model.parameters())
     post_process = create_module(cfg['post_process']['function'])(cfg)
-    logger.info('Optimizer created.')
-    logger.info('Training start...')
+    logger.info('Optimizer created.') if local_check else None
+    logger.info('Training start...') if local_check else None
     
     assert cfg['base']['model_type'] in ['text_detection', 'text_recognition'], 'dont support this type of model'
     if cfg['base']['model_type'] == 'text_detection':
@@ -103,15 +123,18 @@ def main(args):
                              logger, save_model_dir, cfg)
         trainer.train()
 
-    logger.info('Training end...')
+    logger.info('Training end...') if local_check else None
     if cfg['trainer']['distributed']:
         dist.destroy_process_group()
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Hyper_parameter')
+    parser.add_argument('--device', type=str, default=None, help='choose gpu device')
     parser.add_argument('--config', type=str, default='config/db_resnet50.yaml', help='config path')
-    parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument('--local_rank', type=int, default=0, help='automatically passed')
+    parser.add_argument('--use_dist', type=str_to_bool, default=True)
+    parser.add_argument('--local_world_size', type=int, default=2)
     parser.add_argument('--resume', type=bool, default=False, help='resume from checkpoint')
     args = parser.parse_args()
     return args

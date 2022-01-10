@@ -80,14 +80,6 @@ class DetLoader(Dataset):
             new_polys.append(poly)
         return new_img, new_polys
     
-    def get_default_augment(self):
-        augment_seq = iaa.Sequential([
-            iaa.Fliplr(0.5),
-            iaa.Affine(rotate=(-10, 10)),
-            iaa.Resize((0.5, 3.0))
-        ])
-        return augment_seq
-    
     def __len__(self):
         return len(self.img_list)
 

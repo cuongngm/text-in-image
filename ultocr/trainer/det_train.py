@@ -14,11 +14,15 @@ class TrainerDet:
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.distributed = config['trainer']['distributed']
-
+        if self.distributed:
+            self.local_check = (config['trainer']['local_check'] == 0)
+        else:
+            self.local_check = True
         self.logger = logger
         self.save_model_dir = save_model_dir
         self.device, self.device_ids = self.prepare_device(config['trainer']['local_rank'],
                                                            config['trainer']['local_world_size'])
+        logger.info('Device_ids:{}'.format(self.device_ids)) if self.local_check else None
         self.model = model.to(self.device)
         self.optimizer = optimizer
         self.criterion = criterion
@@ -30,21 +34,22 @@ class TrainerDet:
         self.start_epoch = 1
         self.epochs = config['trainer']['num_epoch']
         self.config = config
-        # if config['trainer']['sync_batch_norm'] and self.distributed:
-        #     self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
+        if config['trainer']['sync_batch_norm'] and self.distributed:
+            self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
+        
         if self.distributed:
             self.model = DDP(self.model, device_ids=self.device_ids, output_device=self.device_ids[0],
                              find_unused_parameters=True)
-
+            
         if config['trainer']['resume']:
             assert os.path.isfile(config['base']['ckpt_file']), 'checkpoint path is not correct'
-            logger.info('Resume from checkpoint: {}'.format(config['base']['ckpt_file']))
+            logger.info('Resume from checkpoint: {}'.format(config['base']['ckpt_file'])) if self.local_check else None
             checkpoint = torch.load(config['base']['ckpt_file'])
             self.start_epoch = checkpoint['epoch']
             self.model.load_state_dict(checkpoint['state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer'])
         else:
-            logger.info('Training from scratch...')
+            logger.info('Training from scratch...') if self.local_check else None
 
     def train(self):
         if self.distributed:
@@ -53,12 +58,12 @@ class TrainerDet:
         best_hmean = 0
         for epoch in range(self.start_epoch, self.epochs + 1):
             torch.cuda.empty_cache()
-            self.logger.info('Training in epoch: {}/{}'.format(epoch, self.epochs))
+            self.logger.info('Training in epoch: {}/{}'.format(epoch, self.epochs)) if self.local_check else None
             train_loss = self.train_epoch(epoch)
             train_loss = train_loss.item()
-            self.logger.info('Train loss: {}'.format(train_loss))
+            self.logger.info('Train loss: {}'.format(train_loss)) if self.local_check else None
             recall, precision, hmean = self.test_epoch()
-            self.logger.info('Test: Recall: {} - Precision:{} - Hmean: {}'.format(recall, precision, hmean))
+            self.logger.info('Test: Recall: {} - Precision:{} - Hmean: {}'.format(recall, precision, hmean)) if self.local_check else None
             if hmean > best_hmean:
                 best_hmean = hmean
                 save_checkpoint({
@@ -71,12 +76,12 @@ class TrainerDet:
                     'epoch': epoch,
                     'state_dict': self.model.state_dict()
                 }, self.save_model_dir, 'best_cp.pth')
-        self.logger.info('Training completed')
+        self.logger.info('Training completed') if self.local_check else None
         save_checkpoint({
             'epoch': self.epochs,
             'state_dict': self.model.state_dict()
         }, self.save_model_dir, 'last_cp.pth')
-        self.logger.info('Saved model')
+        self.logger.info('Saved model') if self.local_check else None
         if self.distributed:
             dist.destroy_process_group()
 
@@ -104,7 +109,7 @@ class TrainerDet:
             iou_shrink_map = score_shrink_map['Mean IoU']
             if idx % self.config['trainer']['log_iter'] == 0:
                 self.logger.info('[{}-{}] - lr:{} - total-loss:{} - acc:{} - iou:{}'
-                                 .format(epoch, idx, lr, total_loss, acc, iou_shrink_map))
+                                 .format(epoch, idx, lr, total_loss, acc, iou_shrink_map)) if self.local_check else None
         return train_loss / len(self.train_loader)
 
     def test_epoch(self):
@@ -127,13 +132,14 @@ class TrainerDet:
         if self.distributed:
             ngpu_per_process = torch.cuda.device_count() // local_world_size
             device_ids = list(range(local_rank * ngpu_per_process, (local_rank + 1) * ngpu_per_process))
-            print('device_ids', device_ids)
+            
             if torch.cuda.is_available() and local_rank != -1:
-                torch.cuda.set_device(device_ids[0])
+                torch.cuda.set_device(device_ids[0])  # device_ids[0] =local_rank if local_world_size = n_gpu per node
                 device = 'cuda'
-                self.logger.info(f"[Process {os.getpid()}] world_size = {dist.get_world_size()}, " +
-                                 f"rank = {dist.get_rank()}, n_gpu/process = {ngpu_per_process}," +
-                                 f"device_ids = {device_ids}")
+                self.logger.info(
+                    f"[Process {os.getpid()}] world_size = {dist.get_world_size()}, "
+                    + f"rank = {dist.get_rank()}, n_gpu/process = {ngpu_per_process}, device_ids = {device_ids}"
+                ) if self.local_check else None
             else:
                 self.logger.warning('Training will be using CPU!')
                 device = 'cpu'
@@ -143,20 +149,21 @@ class TrainerDet:
             n_gpu = torch.cuda.device_count()
             n_gpu_use = local_world_size
             if n_gpu_use > 0 and n_gpu == 0:
-                self.logger.warning('Warning: There\'s no GPU available on this machine,'
-                                    'training will be performed on CPU.')
+                self.logger.warning("Warning: There\'s no GPU available on this machine,"
+                                    "training will be performed on CPU.")
                 n_gpu_use = 0
             if n_gpu_use > n_gpu:
-                self.logger.warning('Warning: The number of GPU\'s configured to use is {},'
-                                    'but only {} is available'.format(n_gpu_use, n_gpu))
+                self.logger.warning("Warning: The number of GPU\'s configured to use is {}, but only {} are available "
+                                    "on this machine.".format(n_gpu_use, n_gpu))
                 n_gpu_use = n_gpu
-            list_ids = list(range(n_gpu))
+
+            list_ids = list(range(n_gpu_use))
             if n_gpu_use > 0:
-                torch.cuda.set_device(list_ids[1])
-                self.logger.warning(f'Training is using GPU {list_ids[1]}!')
+                torch.cuda.set_device(list_ids[0])  # only use first available gpu as devices
+                self.logger.warning(f'Training is using GPU {list_ids[0]}!')
                 device = 'cuda'
             else:
-                self.logger.warning('Training is using GPU!')
+                self.logger.warning('Training is using CPU!')
                 device = 'cpu'
             device = torch.device(device)
             return device, list_ids

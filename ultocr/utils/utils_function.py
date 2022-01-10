@@ -104,6 +104,13 @@ def dict_to_device(batch, device='cuda'):
             batch[k] = v.to(device)
     return batch
 
+def str_to_bool(value):
+    if value.lower() in {'False', 'false', 'f', '0', 'no', 'n'}:
+        return False
+    elif value.lower() in {'True', 'true', 't', '1', 'yes', 'y'}:
+        return True
+    raise ValueError('{} is not a valid boolean value'.format(value))
+
 
 def read_json(filename):
     filename = Path(filename)

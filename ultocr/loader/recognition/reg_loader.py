@@ -77,6 +77,21 @@ class TextDataset(Dataset):
             return img, file_name
 
 
+class TextInference(Dataset):
+    def __init__(self, all_img, transform=None):
+        self.all_img = all_img
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        img = self.all_img[idx]
+        if self.transform is not None:
+            img, width_ratio = self.transform(img)
+            return img
+
+    def __len__(self):
+        return len(self.all_img)
+
+
 class DistCollateFn:
     def __init__(self, training=True):
         self.training = training

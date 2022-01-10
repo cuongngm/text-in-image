@@ -6,7 +6,9 @@ from PIL import Image
 from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader
+
 from ultocr.utils.utils_function import create_module
+from ultocr.loader.recognition.reg_loader import TextInference
 from ultocr.utils.det_utils import four_point_transform, sort_by_line, test_preprocess, draw_bbox
 from ultocr.utils.reg_utils import ResizeWeight, ConvertLabelToMASTER, greedy_decode_with_probability
 
@@ -15,7 +17,7 @@ class Detection:
     def __init__(self, cfg):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model = create_module(cfg['model']['function'])(cfg)
-        model.load_state_dict(torch.load('saved/ckpt/DBnet/0108_112716/best_cp.pth', map_location=self.device)['state_dict'])
+        model.load_state_dict(torch.load('saved/ckpt/DBnet/0108_112716/last_cp.pth', map_location=self.device)['state_dict'])
         self.model = model.to(self.device)
         self.model.eval()
         self.seg_obj = create_module(cfg['post_process']['function'])(cfg)
@@ -23,8 +25,7 @@ class Detection:
     def detect(self, img):
         det_result = {}
         h_origin, w_origin = img.shape[:2]
-        tmp_img = test_preprocess(img, to_tensor=True, pad=False).to(self.device)
-        self.model.eval()
+        tmp_img = test_preprocess(img, new_size=736, pad=False).to(self.device)
         torch.cuda.empty_cache()
         with torch.no_grad():
             preds = self.model(tmp_img)
@@ -68,21 +69,6 @@ class Detection:
             det_result['box_coordinate'] = after_sort
             det_result['boundary_result'] = all_warped
             return det_result
-
-
-class TextInference(Dataset):
-    def __init__(self, all_img, transform=None):
-        self.all_img = all_img
-        self.transform = transform
-
-    def __getitem__(self, idx):
-        img = self.all_img[idx]
-        if self.transform is not None:
-            img, width_ratio = self.transform(img)
-            return img
-
-    def __len__(self):
-        return len(self.all_img)
 
 
 class Recognition:

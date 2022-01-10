@@ -66,7 +66,7 @@ trainer:
   resume: False
   ckpt_file: checkpoint/model_best.pth
   num_epoch: 100
-  distributed: False
+  sync_batch_norm: True
   local_world_size: 1
   local_rank: 0
   global_rank: 0

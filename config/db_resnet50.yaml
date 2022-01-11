@@ -68,7 +68,6 @@ trainer:
   num_epoch: 100
   sync_batch_norm: True
   local_world_size: 1
-  local_rank: 0
   global_rank: 0
   log_iter: 50
 

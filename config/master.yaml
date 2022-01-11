@@ -3,19 +3,18 @@ base:
   algorithm: MASTER
   save_dir: saved
   gpu_id: 0,1
-  resume: False
-  ckpt_file: checkpoint/model_best.pth
 
 dataset:
+  type: 'txt'  # lmdb / txt
   new_shape: [256, 32]
   train_load:
-    train_img_dir: 'dataset/..'
-    train_label_dir: 'dataset/..'
+    train_img_dir: 'dataset/hoadon_ocr'
+    train_label_dir: 'dataset/hoadon_ocr/train.txt'
     batch_size: 16
     num_workers: 4
   test_load:
-    test_img_dir: 'dataset/..'
-    test_label_dir: 'dataset/..'
+    test_img_dir: 'dataset/hoadon_ocr'
+    test_label_dir: 'dataset/hoadon_ocr/test.txt'
     batch_size: 16
     num_workers: 4
   preprocess:
@@ -23,9 +22,10 @@ dataset:
     to_gray: False
     transform: Resize
     target_transform: None
-  function: ultocr.loader.recognition.reg_loader, RegLoader
+  vocab: 'dataset/vocab/keysVN.txt'
+  function: ultocr.loader.recognition.reg_loader,RegLoader
 
-model_arch:
+model:
   gcb:
     in_channels: 32
     ratio: 0.0625
@@ -50,27 +50,34 @@ model_arch:
     dropout: 0.2
     ff_dim: 2048
     share_parameter: False
+  function: ultocr.model.recognition.master,MASTER
 
 functional:
   load_data: ultocr.loader.reg_loader,TextDataset
-  conv_embedding_gc: ultocr.model.common.resnet,ConvEmbeddingGC
+  conv_embedding_gc: ultocr.model.common.resnet_master,ConvEmbeddingGC
   embedding: ultocr.model.common.transformer,Embeddings
   multi_head_attention: ultocr.model.common.transformer,MultiHeadAttention
   feed_forward: ultocr.model.common.transformer,FeedForward
-  position: ultocr.model.common.transformer,PositionEncoding
+  position: ultocr.model.common.transformer,PositionalEncoding
   generator: ultocr.model.recognition.master,Generator
-  master: ultocr.model.recognition.master,MASTER
 
+loss:
+  function: ultocr.model.loss,CELoss
+  
 optimizer:
   type: 'Adam'
-  functional: ultocr.model.optimizer,Adam
-  lr: 0.0004
+  base_lr: 0.0004
+  function: ultocr.model.optimizer,AdamDecay
 
-lr_scheduler:
+scheduler:
   type: 'StepLR'
   step_size: 30
   gamma: 0.1
 
+post_process:
+  max_len: 128
+  function: ultocr.model.recognition.postprocess,MASTERpostprocess
+  
 trainer:
   epochs: 100
   do_validation: True
@@ -84,5 +91,7 @@ trainer:
   local_rank: -1
   global_rank: -1
   early_stop: -1
+  resume: False
+  ckpt_file: checkpoint/model_best.pth
 
 

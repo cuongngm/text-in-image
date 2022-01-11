@@ -21,63 +21,64 @@ class MASTER(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.convert = ConvertLabelToMASTER(vocab_file='ultocr/utils/vocab.txt', max_length=100, ignore_over=False)
+        self.convert = ConvertLabelToMASTER(vocab_file=config['dataset']['vocab'], max_length=100, ignore_over=False)
         tgt_vocab = self.convert.nclass
-        self.with_encoder = config['model_arch']['common']['with_encoder']
+        self.with_encoder = config['model']['common']['with_encoder']
         for p in self.parameters():
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
         conv_embedding_gc = create_module(config['functional']['conv_embedding_gc'])(config)
         embedding = create_module(config['functional']['embedding'])(
-            config['model_arch']['common']['d_model'],
+            config['model']['common']['d_model'],
             tgt_vocab
         )
         encoder_attn = create_module(config['functional']['multi_head_attention'])(
-            config['model_arch']['common']['nhead'],
-            config['model_arch']['common']['d_model'],
-            config['model_arch']['encoder']['dropout']
+            config['model']['common']['nhead'],
+            config['model']['common']['d_model'],
+            config['model']['encoder']['dropout']
         )
         encoder_ff = create_module(config['functional']['feed_forward'])(
-            config['model_arch']['common']['d_model'],
-            config['model_arch']['encoder']['ff_dim'],
-            config['model_arch']['encoder']['dropout']
+            config['model']['common']['d_model'],
+            config['model']['encoder']['ff_dim'],
+            config['model']['encoder']['dropout']
         )
         encoder_position = create_module(config['functional']['position'])(
-            config['model_arch']['common']['d_model'],
-            config['model_arch']['encoder']['dropout']
+            config['model']['common']['d_model'],
+            config['model']['encoder']['dropout']
         )
 
         decoder_attn = create_module(config['functional']['multi_head_attention'])(
-            config['model_arch']['common']['nhead'],
-            config['model_arch']['common']['d_model'],
-            config['model_arch']['decoder']['dropout']
+            config['model']['common']['nhead'],
+            config['model']['common']['d_model'],
+            config['model']['decoder']['dropout']
         )
         decoder_ff = create_module(config['functional']['feed_forward'])(
-            config['model_arch']['common']['d_model'],
-            config['model_arch']['decoder']['ff_dim'],
-            config['model_arch']['decoder']['dropout']
+            config['model']['common']['d_model'],
+            config['model']['decoder']['ff_dim'],
+            config['model']['decoder']['dropout']
         )
         decoder_position = create_module(config['functional']['position'])(
-            config['model_arch']['common']['d_model'],
-            config['model_arch']['decoder']['dropout']
+            config['model']['common']['d_model'],
+            config['model']['decoder']['dropout']
         )
 
         if self.with_encoder:
-            encoder = Encoder(EncoderLayer(size=config['model_arch']['common']['d_model'],
+            encoder = Encoder(EncoderLayer(size=config['model']['common']['d_model'],
                                            self_attn=deepcopy(encoder_attn),
                                            feed_forward=deepcopy(encoder_ff),
-                                           dropout=config['model_arch']['encoder']['dropout']),
-                              config['model_arch']['encoder']['num_layer'])
+                                           dropout=config['model']['encoder']['dropout']),
+                              config['model']['encoder']['num_layer'])
         else:
             encoder = None
-        decoder = Decoder(DecoderLayer(size=config['model_arch']['common']['d_model'],
+        decoder = Decoder(DecoderLayer(size=config['model']['common']['d_model'],
                                        self_attn=deepcopy(decoder_attn),
+                                       src_attn=deepcopy(decoder_attn),
                                        feed_forward=deepcopy(decoder_ff),
-                                       dropout=config['model_arch']['decoder']['dropout']),
-                          config['model_arch']['decoder']['num_layer'])
-        self.generator = create_module(config['functional']['generator'])(config['model_arch']['common']['d_model'],
-                                                                          config['model_arch']['common']['tgt_vocab'])
+                                       dropout=config['model']['decoder']['dropout']),
+                          config['model']['decoder']['num_layer'])
+        self.generator = create_module(config['functional']['generator'])(config['model']['common']['d_model'],
+                                                                          config['model']['common']['tgt_vocab'])
         src_embed = nn.Sequential(conv_embedding_gc, deepcopy(encoder_position))
         tgt_embed = nn.Sequential(embedding, deepcopy(decoder_position))
         padding = self.convert.PAD

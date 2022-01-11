@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from ultocr.loader.recognition.reg_loader import DistCollateFn
 from ultocr.loader.recognition.translate import LabelTransformer
-from ultocr.model.recognition.postprocess import greedy_decode
+from ultocr.model.recognition.postprocess import MASTERpostprocess
 from ultocr.metrics.reg_metrics import AverageMetricTracker
 from ultocr.utils.utils_function import create_module
 

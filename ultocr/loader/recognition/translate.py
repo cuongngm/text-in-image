@@ -6,6 +6,7 @@ import torch
 class LabelConverter:
     def __init__(self, classes, max_length=-1, ignore_over=False):
         cls_list = None
+        print(classes)
         if isinstance(classes, str):
             cls_list = list(classes)
         if isinstance(classes, list):
@@ -63,5 +64,5 @@ class LabelConverter:
         return texts
 
 
-LabelTransformer = LabelConverter(Path(__file__).parent.joinpath('dictionary/keysVN.txt'),
+LabelTransformer = LabelConverter('dataset/vocab/keysVN.txt',
                                   max_length=100, ignore_over=False)

@@ -74,8 +74,10 @@ def main(args):
     if cfg['trainer']['distributed']:
         local_world_size = args.local_world_size
         cfg['trainer']['local_world_size'] = local_world_size
+        cfg['trainer']['local_rank'] = args.local_rank
     else:
-        local_world_size = cfg['trainer']['local_world_size']
+        local_world_size = 1
+        cfg['trainer']['local_rank'] = args.local_rank
     
     if cfg['trainer']['distributed']:
         if torch.cuda.is_available():
@@ -107,7 +109,7 @@ def main(args):
     logger.info('Loaded successful!. Train datasets: {}, test datasets: {}'.format(len(train_loader) * local_world_size * cfg['dataset']['train_load']['batch_size'], len(test_loader) * local_world_size * cfg['dataset']['test_load']['batch_size'])) if local_check else None
     model = create_module(cfg['model']['function'])(cfg)
     logger.info('Model created, trainable parameters:') if local_check else None
-    criterion = create_module(cfg['loss']['function'])(cfg['loss']['l1_scale'], cfg['loss']['bce_scale'])
+    criterion = create_module(cfg['loss']['function'])
     optimizer = create_module(cfg['optimizer']['function'])(cfg, model.parameters())
     post_process = create_module(cfg['post_process']['function'])(cfg)
     logger.info('Optimizer created.') if local_check else None

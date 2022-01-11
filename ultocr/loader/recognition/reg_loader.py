@@ -7,27 +7,22 @@ from torch.utils.data import Dataset
 from ultocr.loader.recognition.translate import LabelTransformer
 
 
-class TextDataset(Dataset):
-    def __init__(self, config, img_dir, label_dir, is_training=True):
-        if is_training:
-            img_dir = cfg['dataset']['train_load']['train_img_dir']
-            label_dir = cfg['dataset']['train_load']['train_gt_dir']
-        else:
-            img_dir = cfg
-        self.img_w = config['dataset']['crop_shape'][1]
-        self.img_h = config['dataset']['crop_shape'][0]
+class RegLoader(Dataset):
+    def __init__(self, config, is_training=True):
+        self.img_w = config['dataset']['new_shape'][1]
+        self.img_h = config['dataset']['new_shape'][0]
         
-        self.case_sensitive = config['dataset']['case_sensitive']
-        self.to_gray = config['dataset']['to_gray']
-        self.transform = config['dataset']['transform']
-        self.target_transform = config['dataset']['target_transform']
+        self.case_sensitive = config['dataset']['preprocess']['case_sensitive']
+        self.to_gray = config['dataset']['preprocess']['to_gray']
+        self.transform = config['dataset']['preprocess']['transform']
+        self.target_transform = config['dataset']['preprocess']['target_transform']
 
         if is_training:
-            images, labels = self.get_base_info(cfg['dataset']['train_load']['train_img_dir'],
-                                                cfg['dataset']['train_load']['train_gt_dir'])
+            images, labels = self.get_base_info(config['dataset']['train_load']['train_img_dir'],
+                                                config['dataset']['train_load']['train_label_dir'])
         else:
-            images, labels = self.get_base_info(cfg['dataset']['test_load']['test_img_dir'],
-                                                cfg['dataset']['test_load']['test_gt_dir'])
+            images, labels = self.get_base_info(config['dataset']['test_load']['test_img_dir'],
+                                                config['dataset']['test_load']['test_label_dir'])
         self.all_images = images
         self.all_labels = labels
         self.is_training = is_training

@@ -4,9 +4,7 @@ import torch
 
 
 def AdamDecay(config, parameters):
-    optimizer = torch.optim.Adam(parameters, lr=config['optimizer']['base_lr'],
-                                 betas=(config['optimizer']['beta1'], config['optimizer']['beta2']),
-                                 weight_decay=config['optimizer']['weight_decay'])
+    optimizer = torch.optim.Adam(parameters, lr=config['optimizer']['base_lr'])
     return optimizer
 
 

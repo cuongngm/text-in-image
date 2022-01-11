@@ -140,7 +140,6 @@ class End2end:
     def get_result(self):
         img = cv2.imread(self.img_path)
         det_result = self.detection.detect(img)
-        """
         all_img_crop = det_result['boundary_result']
         if len(all_img_crop) == 0:
             result = 'khong co text trong anh'
@@ -150,6 +149,5 @@ class End2end:
             img_pil = Image.fromarray(img_crop.astype('uint8'), 'RGB')
             all_img_pil.append(img_pil)
         result = self.recognition.recognize(all_img_pil)
-        """
         return det_result
 

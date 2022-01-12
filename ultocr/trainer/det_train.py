@@ -6,6 +6,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from ultocr.utils.utils_function import create_module, save_checkpoint, dict_to_device
 from ultocr.metrics.det_metrics import runningScore, cal_text_score, QuadMetric
+import mlflow
 
 
 class TrainerDet:
@@ -52,6 +53,7 @@ class TrainerDet:
             logger.info('Training from scratch...') if self.local_check else None
 
     def train(self):
+        self.logger.info('MLflow running...') if self.local_check else None
         if self.distributed:
             dist.barrier()
         best_train_loss = np.inf
@@ -62,7 +64,11 @@ class TrainerDet:
             train_loss = self.train_epoch(epoch)
             train_loss = train_loss.item()
             self.logger.info('Train loss: {}'.format(train_loss)) if self.local_check else None
+            mlflow.log_metric('Train loss', train_loss)
             recall, precision, hmean = self.test_epoch()
+            mlflow.log_metric('Recall', recall)
+            mlflow.log_metric('Precision', precision)
+            mlflow.log_metric('Hmean', hmean)
             self.logger.info('Test: Recall: {} - Precision:{} - Hmean: {}'.format(recall, precision, hmean)) if self.local_check else None
             if hmean > best_hmean:
                 best_hmean = hmean
@@ -107,6 +113,9 @@ class TrainerDet:
             train_loss += total_loss
             acc = score_shrink_map['Mean Acc']
             iou_shrink_map = score_shrink_map['Mean IoU']
+            mlflow.log_param("Epochs", epoch)
+            mlflow.log_param("Batch size", batch['img'].size(0))
+            mlflow.log_param("Learning rate", lr)
             if idx % self.config['trainer']['log_iter'] == 0:
                 self.logger.info('[{}-{}] - lr:{} - total-loss:{} - acc:{} - iou:{}'
                                  .format(epoch, idx, lr, total_loss, acc, iou_shrink_map)) if self.local_check else None
@@ -157,10 +166,10 @@ class TrainerDet:
                                     "on this machine.".format(n_gpu_use, n_gpu))
                 n_gpu_use = n_gpu
 
-            list_ids = list(range(n_gpu_use))
+            list_ids = list(range(n_gpu))
             if n_gpu_use > 0:
-                torch.cuda.set_device(list_ids[0])  # only use first available gpu as devices
-                self.logger.warning(f'Training is using GPU {list_ids[0]}!')
+                torch.cuda.set_device(list_ids[-1])  # only use first available gpu as devices
+                self.logger.warning(f'Training is using GPU {list_ids[-1]}!')
                 device = 'cuda'
             else:
                 self.logger.warning('Training is using CPU!')

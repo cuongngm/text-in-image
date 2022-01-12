@@ -1,0 +1,15 @@
+name: text-in-image
+channels:
+        - conda-forge
+dependencies:
+        - python=3.6
+        - pip
+        - pip:
+                - torch==1.7.0
+                - torchvision==0.8.1
+                - mlflow
+                - Polygon3
+                - pyclipper
+                - imgaug
+                - distance
+                - tqdm

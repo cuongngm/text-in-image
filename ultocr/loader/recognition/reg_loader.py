@@ -5,6 +5,7 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset
 from ultocr.loader.recognition.translate import LabelTransformer
+from ultocr.utils.utils_function import create_module
 
 
 class RegLoader(Dataset):
@@ -14,8 +15,7 @@ class RegLoader(Dataset):
         
         self.case_sensitive = config['dataset']['preprocess']['case_sensitive']
         self.to_gray = config['dataset']['preprocess']['to_gray']
-        self.transform = config['dataset']['preprocess']['transform']
-        self.target_transform = config['dataset']['preprocess']['target_transform']
+        self.transform = create_module(config['dataset']['preprocess']['transform'])(self.img_h, self.img_w)
 
         if is_training:
             images, labels = self.get_base_info(config['dataset']['train_load']['train_img_dir'],
@@ -59,11 +59,9 @@ class RegLoader(Dataset):
 
         if self.transform is not None:
             img, width_ratio = self.transform(img)
-
+            
         if self.is_training:
             label = self.all_labels[idx]
-            if self.target_transform is not None:
-                label = self.target_transform(label)
 
             if not self.case_sensitive:
                 label = label.lower()
@@ -113,7 +111,7 @@ class DistCollateFn:
 
 
 class Resize:
-    def __init__(self, new_h, new_w, is_gray=True):
+    def __init__(self, new_h, new_w, is_gray=False):
         self.new_h = new_h
         self.new_w = new_w
         self.is_gray = is_gray

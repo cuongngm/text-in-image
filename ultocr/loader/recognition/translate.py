@@ -6,7 +6,6 @@ import torch
 class LabelConverter:
     def __init__(self, classes, max_length=-1, ignore_over=False):
         cls_list = None
-        print(classes)
         if isinstance(classes, str):
             cls_list = list(classes)
         if isinstance(classes, list):

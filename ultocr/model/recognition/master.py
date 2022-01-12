@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from copy import deepcopy
 from ultocr.utils.utils_function import create_module
-from ultocr.utils.reg_utils import ConvertLabelToMASTER
+from ultocr.loader.recognition.translate import LabelConverter
 from ultocr.model.common.transformer import EncoderLayer, DecoderLayer, Encoder, Decoder
 
 
@@ -21,8 +21,8 @@ class MASTER(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.convert = ConvertLabelToMASTER(vocab_file=config['dataset']['vocab'], max_length=100, ignore_over=False)
-        tgt_vocab = self.convert.nclass
+        self.convert = LabelConverter(classes=config['dataset']['vocab'], max_length=100, ignore_over=False)
+        tgt_vocab = self.convert.n_class
         self.with_encoder = config['model']['common']['with_encoder']
         for p in self.parameters():
             if p.dim() > 1:

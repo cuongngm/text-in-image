@@ -20,8 +20,7 @@ dataset:
   preprocess:
     case_sensitive: False
     to_gray: False
-    transform: Resize
-    target_transform: None
+    transform: ultocr.loader.recognition.reg_loader,Resize
   vocab: 'dataset/vocab/keysVN.txt'
   function: ultocr.loader.recognition.reg_loader,RegLoader
 
@@ -81,8 +80,8 @@ post_process:
 trainer:
   epochs: 100
   do_validation: True
-  validation_epoch: 10
-  log_step_interval: 1
+  validation_epoch: 1
+  log_step_interval: 200
   val_step_interval: 2000
   save_dir: 'saved'
   monitor: 'max_word_acc'
@@ -90,7 +89,7 @@ trainer:
   local_world_size: 4
   local_rank: -1
   global_rank: -1
-  early_stop: -1
+  early_stop: 10
   resume: False
   ckpt_file: checkpoint/model_best.pth
 

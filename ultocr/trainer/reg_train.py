@@ -45,7 +45,7 @@ class TrainerReg:
         if self.distributed:
             self.model = DDP(self.model, device_ids=self.device_ids, output_device=self.device_ids[0],
                              find_unused_parameters=True)
-        self.len_step = None
+        self.len_step = len(train_loader)
         self.train_loader = train_loader
         self.val_loader = val_loader
 
@@ -57,10 +57,12 @@ class TrainerReg:
         self.log_step = log_step
         self.val_step_interval = cfg['trainer']['val_step_interval']
         self.early_stop = cfg['trainer']['early_stop']
-
+        
+        self.greedy_decode = create_module(cfg['post_process']['function'])(cfg)
         self.train_metrics = AverageMetricTracker('loss')
         self.val_metrics = AverageMetricTracker('loss', 'word_acc', 'word_case_insensitive',
                                                 'edit_distance_acc')
+        
 
     def train(self):
         if self.distributed:
@@ -68,9 +70,9 @@ class TrainerReg:
         not_improved_count = 0
         for epoch in range(self.start_epoch, self.epochs + 1):
             torch.cuda.empty_cache()
-            result_dict = self.train_epoch(epoch)
+            # result_dict = self.train_epoch(epoch)
             if self.do_validation and epoch % self.validation_epoch == 0:
-                val_metric_res_dict = self.valid_epoch()
+                val_metric_res_dict = self.valid_epoch(epoch)
                 val_res = f"\nValidation result after {epoch} epoch:" \
                           f"Word_acc: {val_metric_res_dict['word_acc']:.6f}" \
                           f"Word_acc_case_ins: {val_metric_res_dict['word_acc_case_ins']:.6f}" \
@@ -82,7 +84,7 @@ class TrainerReg:
             self.logger.info('[Epoch end] Epoch:[{}/{}] Loss: {:.6f} LR: {:.8f}'
                              .format(epoch, self.epochs, result_dict['loss'], self.get_lr()) + val_res)
             best = False
-            if self.do_validation and epoch % self.validation_epoch:
+            if self.do_validation and epoch % self.validation_epoch == 0:
                 best, not_improved_count = self.is_best_monitor_metric(best, not_improved_count, val_metric_res_dict)
                 if not_improved_count > self.early_stop:
                     self.logger.info('Validation performance didn\'t improve for {} epochs.'
@@ -95,9 +97,8 @@ class TrainerReg:
         self.model.train()
         self.train_metrics.reset()
         for step_idx, input_data_item in enumerate(self.train_loader):
-            batch_size = input_data_item['batch_size']
-            images = input_data_item['images']
-            text_label = input_data_item['labels']
+            images = input_data_item[0]
+            text_label = input_data_item[1]
             step_idx += 1
             images = images.to(self.device)
             target = LabelTransformer.encode(text_label)
@@ -106,7 +107,7 @@ class TrainerReg:
             with torch.autograd.set_detect_anomaly(True):
                 outputs = self.model(images, target[:, :-1])
                 loss = f.cross_entropy(outputs.contiguous().view(-1, outputs.shape[-1]),
-                                       target[:, 1:].contigous().view(-1), ignore_index=LabelTransformer.PAD)
+                                       target[:, 1:].contiguous().view(-1), ignore_index=LabelTransformer.PAD)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -114,6 +115,8 @@ class TrainerReg:
             reduced_loss = loss.item()
             if self.distributed:
                 reduced_metrics_tensor = torch.tensor([batch_total, reduced_loss]).float().to(self.device)
+                dist.barrier()
+                reduced_metrics_tensor = self.sum_tesnor(reduced_metrics_tensor)
                 batch_total, reduced_loss = reduced_metrics_tensor.cpu().numpy()
                 reduced_loss = reduced_loss / dist.get_world_size()
             global_step = (epoch - 1) * self.len_step + step_idx - 1
@@ -133,9 +136,9 @@ class TrainerReg:
         self.model.eval()
         self.val_metrics.reset()
         for step_idx, input_data_item in enumerate(self.val_loader):
-            batch_size = input_data_item['batch_size']
-            images = input_data_item['images']
-            text_label = input_data_item['labels']
+            batch_size = input_data_item[0].size(0)
+            images = input_data_item[0]
+            text_label = input_data_item[1]
             if self.distributed:
                 word_acc, word_acc_case_ins, edit_distance_acc, total_distance_ref, batch_total =\
                     self.distributed_predict(batch_size, images, text_label)
@@ -146,9 +149,7 @@ class TrainerReg:
                         model = self.model.module
                     else:
                         model = self.model
-                outputs, _ = greedy_decode(model, images, LabelTransformer.max_length,
-                                                            LabelTransformer.SOS, LabelTransformer.EOS,
-                                                            LabelTransformer.PAD, images.device, is_padding=True)
+                outputs, _ = self.greedy_decode(model, images, device=self.device)
                 correct = 0
                 correct_case_ins = 0
                 total_distance_ref = 0
@@ -160,6 +161,8 @@ class TrainerReg:
                         if pred[i] == LabelTransformer.UNK: continue
                         decoded_char = LabelTransformer.decode(pred[i])
                         predict_text += decoded_char
+                    print('gt:', text_gold)
+                    print('pred:', predict_text)
                     ref = len(text_gold)
                     edit_distance = distance.levenshtein(text_gold, predict_text)
                     total_distance_ref += ref
@@ -298,8 +301,8 @@ class TrainerReg:
                 n_gpu_use = n_gpu
             list_ids = list(range(n_gpu_use))
             if n_gpu_use > 0:
-                torch.cuda.set_device(list_ids[0])
-                self.logger.info('Training is using GPU {}'.format(list_ids[0]))
+                torch.cuda.set_device(list_ids[-1])
+                self.logger.info('Training is using GPU {}'.format(list_ids[-1]))
                 device = 'cuda'
             else:
                 self.logger.warning('Training is using CPU!')

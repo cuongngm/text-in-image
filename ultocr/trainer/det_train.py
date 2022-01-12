@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-from ultocr.utils.utils_function import create_module, save_checkpoint, dict_to_device
+from ultocr.utils.utils_function import save_checkpoint, dict_to_device
 from ultocr.metrics.det_metrics import runningScore, cal_text_score, QuadMetric
 import mlflow
 
@@ -156,7 +156,7 @@ class TrainerDet:
             return device, device_ids
         else:
             n_gpu = torch.cuda.device_count()
-            n_gpu_use = local_world_size
+            n_gpu_use = 1
             if n_gpu_use > 0 and n_gpu == 0:
                 self.logger.warning("Warning: There\'s no GPU available on this machine,"
                                     "training will be performed on CPU.")
@@ -168,8 +168,8 @@ class TrainerDet:
 
             list_ids = list(range(n_gpu))
             if n_gpu_use > 0:
-                torch.cuda.set_device(list_ids[-1])  # only use first available gpu as devices
-                self.logger.warning(f'Training is using GPU {list_ids[-1]}!')
+                torch.cuda.set_device(self.config['base']['gpu_id'])  # only use first available gpu as devices
+                self.logger.warning(f'Training is using GPU {self.config["base"]["gpu_id"]}!')
                 device = 'cuda'
             else:
                 self.logger.warning('Training is using CPU!')

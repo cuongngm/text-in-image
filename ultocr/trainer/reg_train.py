@@ -290,7 +290,7 @@ class TrainerReg:
             return device, device_ids
         else:
             n_gpu = torch.cuda.device_count()
-            n_gpu_use = local_world_size
+            n_gpu_use = 1
             if n_gpu_use > 0 and n_gpu == 0:
                 self.logger.info('Warning: There is no GPU available on this machine,'
                                  'training will be performed on CPU')
@@ -301,8 +301,8 @@ class TrainerReg:
                 n_gpu_use = n_gpu
             list_ids = list(range(n_gpu_use))
             if n_gpu_use > 0:
-                torch.cuda.set_device(list_ids[-1])
-                self.logger.info('Training is using GPU {}'.format(list_ids[-1]))
+                torch.cuda.set_device(self.config['base']['gpu_id'])
+                self.logger.info('Training is using GPU {}'.format(self.config["base"]["gpu_id"]))
                 device = 'cuda'
             else:
                 self.logger.warning('Training is using CPU!')

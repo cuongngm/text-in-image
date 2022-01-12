@@ -1,9 +1,3 @@
-## ULTOCR
-ULT OCR is an open-source toolbox based on Pytorch for text detection
-and text recognition. This project is synthesis of our knowledge in the process of learning and understanding.
-Welcome all contributions.
-
-
 ### Quickstart
 ```bash
 pip install ultocr  # install our project with package
@@ -28,6 +22,8 @@ Custom params in each config file of config folder then:
 Single gpu training:
 ```bash
 python train.py --config config/db_resnet50.yaml --use_dist False
+# as mlflow
+mlflow run text-in-image -P config=config/db_resnet50.yaml -P use_dist=False -P device=1
 ```
 Multi gpu training:
 ```bash

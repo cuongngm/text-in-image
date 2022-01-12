@@ -5,4 +5,5 @@ entry_points:
     parameters:
       config: {type: str, default:config/db_resnet50.yaml}
       use_dist: {type: bool, default:False}
-    command: "python train.py --config {config} --use_dist {use_dist}" 
+      gpu: {type:int, default:1}
+    command: "python train.py --config {config} --use_dist {use_dist} --device {gpu}"

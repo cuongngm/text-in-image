@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import torch
+import torchvision.transforms as transforms
 
 
 def order_points(pts):
@@ -61,24 +62,16 @@ def sort_by_line(box_info, image):
 
 
 def test_preprocess(img,
-                    mean=[103.939, 116.779, 123.68],
-                    to_tensor=True,
+                    new_size=736,
                     pad=False):
-    img = test_resize(img, size=736, pad=pad)
-
-    img = img.astype(np.float32)
-    img[..., 0] -= mean[0]
-    img[..., 1] -= mean[1]
-    img[..., 2] -= mean[2]
-    img = np.expand_dims(img, axis=0)
-
-    if to_tensor:
-        img = torch.Tensor(img.transpose(0, 3, 1, 2))
-
+    img = test_resize(img, size=new_size, pad=pad)
+    img = transforms.ToTensor()(img)
+    img = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])(img)
+    img = img.unsqueeze(0)
     return img
 
 
-def test_resize(img, size=640, pad=False):
+def test_resize(img, size=736, pad=False):
     h, w, c = img.shape
     scale_w = size / w
     scale_h = size / h
@@ -94,3 +87,17 @@ def test_resize(img, size=640, pad=False):
         new_img = cv2.resize(img, (w, h))
 
     return new_img
+
+
+def draw_bbox(img, result, color=(255, 0, 0), thickness=2):
+    """
+    :input: RGB img
+    """
+    if isinstance(img, str):
+        img = cv2.imread(img)
+    img = img.copy()
+    h, w = img.shape[:2]
+    for point in result:
+        point = point.astype(int)
+        cv2.polylines(img, [point], True, color, thickness)
+    return img

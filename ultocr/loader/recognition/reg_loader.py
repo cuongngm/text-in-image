@@ -5,28 +5,27 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset
 from ultocr.loader.recognition.translate import LabelTransformer
+from ultocr.utils.utils_function import create_module
 
 
-class TextDataset(Dataset):
-    def __init__(self, config, img_dir, label_dir, training=True):
-        self.img_w = config['dataset']['img_w']
-        self.img_h = config['dataset']['img_h']
-        self.training = training
-        self.case_sensitive = config['dataset']['case_sensitive']
-        self.to_gray = config['dataset']['to_gray']
-        self.transform = config['dataset']['transform']
-        self.target_transform = config['dataset']['target_transform']
-        self.all_images = []
-        self.all_labels = []
+class RegLoader(Dataset):
+    def __init__(self, config, is_training=True):
+        self.img_w = config['dataset']['new_shape'][1]
+        self.img_h = config['dataset']['new_shape'][0]
+        
+        self.case_sensitive = config['dataset']['preprocess']['case_sensitive']
+        self.to_gray = config['dataset']['preprocess']['to_gray']
+        self.transform = create_module(config['dataset']['preprocess']['transform'])(self.img_h, self.img_w)
 
-        if training:
-            images, labels = self.get_base_info(img_dir, label_dir)
-            self.all_images += images
-            self.all_labels += labels
+        if is_training:
+            images, labels = self.get_base_info(config['dataset']['train_load']['train_img_dir'],
+                                                config['dataset']['train_load']['train_label_dir'])
         else:
-            imgs = os.listdir(config['dataset']['img_root'])
-            for img in imgs:
-                self.all_images.append(os.path.join(config['dataset']['img_root'], img))
+            images, labels = self.get_base_info(config['dataset']['test_load']['test_img_dir'],
+                                                config['dataset']['test_load']['test_label_dir'])
+        self.all_images = images
+        self.all_labels = labels
+        self.is_training = is_training
 
     def get_base_info(self, img_root, txt_file):
         image_names = []
@@ -60,17 +59,30 @@ class TextDataset(Dataset):
 
         if self.transform is not None:
             img, width_ratio = self.transform(img)
-
-        if self.training:
+            
+        if self.is_training:
             label = self.all_labels[idx]
-            if self.target_transform is not None:
-                label = self.target_transform(label)
 
             if not self.case_sensitive:
                 label = label.lower()
             return img, label
         else:
             return img, file_name
+
+
+class TextInference(Dataset):
+    def __init__(self, all_img, transform=None):
+        self.all_img = all_img
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        img = self.all_img[idx]
+        if self.transform is not None:
+            img, width_ratio = self.transform(img)
+            return img
+
+    def __len__(self):
+        return len(self.all_img)
 
 
 class DistCollateFn:
@@ -99,7 +111,7 @@ class DistCollateFn:
 
 
 class Resize:
-    def __init__(self, new_h, new_w, is_gray=True):
+    def __init__(self, new_h, new_w, is_gray=False):
         self.new_h = new_h
         self.new_w = new_w
         self.is_gray = is_gray

@@ -54,7 +54,7 @@ class runningScore(object):
 
 
 def cal_text_score(texts, gt_texts, training_masks,
-                   running_metric_text, thresh=0.25):
+                   running_metric_text, thresh=0.3):
     """
     :param texts:  pred_prob_map
     :param gt_texts: gt_prob_map
@@ -77,9 +77,12 @@ def cal_text_score(texts, gt_texts, training_masks,
 def to_list_tuples_coords(anns):
     new_anns = []
     for ann in anns:
+        ann = ann.detach().cpu().numpy()
+        ann = ann.reshape(-1, 2).tolist()
         points = []
         for x, y in ann:
-            points.append((x[0].tolist(), y[0].tolist()))
+            # points.append((x[0].tolist(), y[0].tolist()))
+            points.append((x, y))
         new_anns.append(points)
     return new_anns
 
@@ -323,8 +326,11 @@ class QuadMetric:
         results = []
         pred_polygons_batch = np.array(output[0])
         pred_scores_batch = np.array(output[1])
+        
         gt_polygons_batch = to_list_tuples_coords(batch['polys'])
-        ignore_tags_batch = [i[0].tolist() for i in batch['ignore_tags']]
+        
+        ignore_tags_batch = [i[0].tolist() for i in batch['ignore']]
+
         gt = []
         for gt_polygon, ignore_tag in zip(gt_polygons_batch, ignore_tags_batch):
             gt.append({'points': gt_polygon, 'ignore': ignore_tag})

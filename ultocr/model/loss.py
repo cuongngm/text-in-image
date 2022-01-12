@@ -8,12 +8,28 @@ class DiceLoss(nn.Module):
         super().__init__()
         self.eps = eps
 
-    def forward(self, pred, gt, mask):
-        intersection = (pred * gt * mask).sum()
-        union = (pred * mask).sum() + (gt * mask).sum() + self.eps
-        loss = 1 - 2.0 * intersection / union
-        assert loss <= 1
-        return loss
+    def forward(self, pre_score, gt_score, train_mask):
+        pre_score = pre_score.contiguous().view(pre_score.size()[0], -1)
+        gt_score = gt_score.contiguous().view(gt_score.size()[0], -1)
+        train_mask = train_mask.contiguous().view(train_mask.size()[0], -1)
+        pre_score = pre_score * train_mask
+        gt_score = gt_score * train_mask
+        a = torch.sum(pre_score * gt_score, 1)
+        b = torch.sum(pre_score * pre_score, 1) + self.eps
+        c = torch.sum(gt_score * gt_score, 1) + self.eps
+        d = (2 * a) / (b + c)
+        dice_loss = torch.mean(d)
+        return 1 - dice_loss
+
+    
+class CELoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, pred, gt):
+        loss = F.cross_entropy(pred.contiguous().view(-1, gt.shape[-1]),
+                              gt[:, 1:].contiguous().view(-1), ignore_index=0)
+        
 
 class BalanceCrossEntropyLoss(nn.Module):
     def __init__(self, negative_ratio=3.0, eps=1e-6):

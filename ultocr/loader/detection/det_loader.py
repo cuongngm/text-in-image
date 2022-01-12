@@ -1,10 +1,10 @@
 import os
 import cv2
 import numpy as np
-from PIL import Image
 import torch
-from torch.utils.data import Dataset
 import torchvision.transforms as transforms
+from PIL import Image
+from torch.utils.data import Dataset
 from ultocr.loader.augment import DetAugment
 from ultocr.loader.detection.make_segmap import MakeSegMap
 from ultocr.loader.detection.make_bordermap import MakeBorderMap
@@ -13,9 +13,9 @@ from ultocr.loader.detection.make_bordermap import MakeBorderMap
 class DetLoader(Dataset):
     def __init__(self, config, is_training=True):
         super().__init__()
-        self.crop_shape = config['dataset']['crop_shape']
+        self.crop_shape = config['dataset']['new_shape']
         self.dataset_type = config['dataset']['type']
-        assert self.dataset_type in ['CTW1500', 'ICDAR'], 'data type is not correct'
+        assert self.dataset_type in ['four_point', 'multi_point'], 'data type is not correct'
         self.is_training = is_training
 
         if self.is_training:
@@ -38,18 +38,18 @@ class DetLoader(Dataset):
             img_list.append(img_path)
             polys = []
             ignore = []
+            # label_name = 'gt_' + img_name.replace('.jpg', '.txt')
             label_name = img_name.replace('.jpg', '.txt')
-            # label_name = 'gt_' + label_name
             with open(os.path.join(label_dir, label_name), 'r', encoding='utf-8') as file:
                 lines = file.readlines()
                 for line in lines:
                     poly = line.strip().strip('\ufeff').strip('\xef\xbb\xbf').split(',')
-                    if self.dataset_type == 'CTW1500':
+                    if self.dataset_type == 'multi_point':
                         # x1, y1, x2, y2, ..., xn, yn
                         poly = list(map(int, poly))
                         polys.append(poly)
                         ignore.append(False)
-                    elif self.dataset_type == 'ICDAR':
+                    elif self.dataset_type == 'four_point':
                         # x1, y1, x2, y2, x3, y3, x4, y4, transcripts
                         poly = poly[:8]
                         poly = list(map(int, poly))
@@ -80,7 +80,7 @@ class DetLoader(Dataset):
             poly = poly.reshape(-1, 2).tolist()
             new_polys.append(poly)
         return new_img, new_polys
-
+    
     def __len__(self):
         return len(self.img_list)
 
@@ -95,19 +95,20 @@ class DetLoader(Dataset):
             img, polys = self.aug.random_rotate(img, polys)
             img, polys = self.aug.random_flip(img, polys)
             img, polys, ignore = self.aug.random_crop_db(img, polys, ignore)
+            
             # make segment map, make border map
             img, gt, gt_mask = self.MSM.process(img, polys, ignore)
             img, thresh_map, thresh_mask = self.MBM.process(img, polys, ignore)
-
+            
             img = Image.fromarray(img).convert('RGB')
-            img = transforms.ColorJitter(brightness=32.0/255, saturation=0.5)(img)
+            # img = transforms.ColorJitter(brightness=32.0/255, saturation=0.5)(img)
             img = self.aug.normalize_img(img)
 
             gt = torch.from_numpy(gt).float()
             gt_mask = torch.from_numpy(gt_mask).float()
             thresh_map = torch.from_numpy(thresh_map).float()
             thresh_mask = torch.from_numpy(thresh_mask).float()
-
+            
             data = {
                 'img': img,
                 'gt': gt,
@@ -122,6 +123,7 @@ class DetLoader(Dataset):
             data = {
                 'img': img,
                 'polys': polys,
-                'ignore_tags': ignore
+                'ignore': ignore
+
             }
         return data

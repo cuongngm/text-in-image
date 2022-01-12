@@ -4,6 +4,20 @@ from shapely.geometry import Polygon
 import numpy as np
 
 
+def shrink_polygon_pyclipper(polygon, shrink_ratio):
+    polygon_shape = Polygon(polygon)
+    distance = polygon_shape.area * (1 - np.power(shrink_ratio, 2)) / polygon_shape.length
+    subject = [tuple(l) for l in polygon]
+    padding = pyclipper.PyclipperOffset()
+    padding.AddPath(subject, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
+    shrinked = padding.Execute(-distance)
+    if shrinked == []:
+        shrinked = np.array(shrinked)
+    else:
+        shrinked = np.array(shrinked[0]).reshape(-1, 2)
+    return shrinked
+
+
 class MakeSegMap:
     '''
     Making binary mask from detection data with ICDAR format.
@@ -23,9 +37,7 @@ class MakeSegMap:
         '''
         h, w = img.shape[:2]
         # polys = [poly for poly in polys if Polygon(poly).buffer(0).is_valid]
-
-        if self.is_training:
-            polys, ignore = self.validate_polygons(
+        polys, ignore = self.validate_polygons(
                 polys, ignore, h, w)
         gt = np.zeros((h, w), dtype=np.float32)
         mask = np.ones((h, w), dtype=np.float32)
@@ -39,6 +51,7 @@ class MakeSegMap:
                     np.int32)[np.newaxis, :, :], 0)
                 ignore[i] = True
             else:
+
                 polygon_shape = Polygon(poly)
                 distance = polygon_shape.area * \
                            (1 - np.power(self.shrink_ratio, 2)) / polygon_shape.length
@@ -52,7 +65,7 @@ class MakeSegMap:
                         np.int32)[np.newaxis, :, :], 0)
                     ignore[i] = True
                     continue
-                shrinked = np.array(shrinked[0]).reshape(-1, 2)
+                # shrinked = np.array(shrinked[0]).reshape(-1, 2)
                 cv2.fillPoly(gt, [shrinked.astype(np.int32)], 1)
         return img, gt, mask
 

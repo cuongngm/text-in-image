@@ -1,26 +1,29 @@
 base:
+  model_type: text_detection 
   algorithm: DBnet
   save_dir: saved
-  gpu_id: 0,1
-  ckpt_file: checkpoint/model_best.pth
+  gpu_id: 0
+
 dataset:
-  type: CTW1500
-  crop_shape: [736, 736]
+  type: 'multi_point'
+  new_shape: [736, 736]
   train_load:
-    train_img_dir: '/data/cuongnm1/dataset/CTW1500/train/img'
-    train_label_dir: '/data/cuongnm1/dataset/CTW1500/train/gt'
-    batch_size: 4
+    train_img_dir: 'dataset/CTW1500/train/img'
+    train_label_dir: 'dataset/CTW1500/train/gt'
+    batch_size: 2
     num_workers: 4
   test_load:
-    test_img_dir: '/data/cuongnm1/dataset/CTW1500/test/img'
-    test_label_dir: '/data/cuongnm1/dataset/CTW1500/test/gt'
+    test_img_dir: 'dataset/CTW1500/test/img'
+    test_label_dir: 'dataset/CTW1500/test/gt'
     batch_size: 1
     num_workers: 0
+  preprocess: None
   function: ultocr.loader.detection.det_loader,DetLoader
+
 model:
   backbone:
-    pretrained: False
-    function: ultocr.model.common.resnet_dcn,resnet50
+    pretrained: True
+    function: ultocr.model.common.resnet,resnet50
   head:
     in_channels: [256, 512, 1024, 2048]
     inner_channels: 256
@@ -31,17 +34,21 @@ model:
     adaptive: True
     function: ultocr.model.detection.segout,SegDetector
   function: ultocr.model.detection.db_net,DBNet
+
 loss:
   function: ultocr.model.loss,DBLoss
   l1_scale: 1
   bce_scale: 10
+
 optimizer:
   base_lr: 0.007
   weight_decay: 0.0001
   momentum: 0.9
   function: ultocr.model.optimizer,SGDDecay
+
 scheduler:
   factor: 0.9
+
 post_process:
   thresh: 0.25
   box_thresh: 0.5
@@ -50,14 +57,18 @@ post_process:
   unclip_ratio: 1.5
   min_size: 3
   function: ultocr.model.detection.postprocess,DBPostProcess
-trainer:
-  num_epoch: 100
-  distributed: False
-  local_world_size: 2
-  local_rank: 0
-  num_class: 2
-  log_iter: 50
+
 metric:
   thresh_text_score: 0.25
   is_output_polygon: False
+
+trainer:
+  resume: False
+  ckpt_file: checkpoint/model_best.pth
+  num_epoch: 100
+  sync_batch_norm: True
+  local_world_size: 1
+  global_rank: 0
+  log_iter: 50
+
 

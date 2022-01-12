@@ -2,7 +2,7 @@ base:
   model_type: text_recognition
   algorithm: MASTER
   save_dir: saved
-  gpu_id: 0,1
+  gpu_id: 0
 
 dataset:
   type: 'txt'  # lmdb / txt

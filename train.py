@@ -93,15 +93,12 @@ def main(args):
         logger.info('One GPU or CPU training mode start...') if local_check else None
         if local_world_size != 1:
             raise RuntimeError('local_world_size must set be to 1, if distributed is set to false')
-        local_rank = 0
-        global_rank = 0
     
     cfg['trainer']['local_check'] = local_check
     fix_random_seed_for_reproduce(123)
     
     if cfg['trainer']['distributed']:
         dist.init_process_group(backend='nccl', init_method='env://')
-        global_rank = dist.get_rank()
         logger.info(f'[Process {os.getpid()}] world_size = {dist.get_world_size()}, ' + f'rank = {dist.get_rank()}, backend={dist.get_backend()}') if local_check else None
 
     # create train, test loader
@@ -124,7 +121,8 @@ def main(args):
         trainer = TrainerReg(train_loader, test_loader, model, optimizer, criterion, post_process,
                              logger, save_model_dir, cfg)
         trainer.train()
-
+    if args.device is not None:
+        cfg['base']['gpu_id'] = args.device
     logger.info('Training end...') if local_check else None
     if cfg['trainer']['distributed']:
         dist.destroy_process_group()

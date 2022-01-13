@@ -8,10 +8,12 @@ import yaml
 import argparse
 import warnings
 import torch
+
 from torch.utils.data import DataLoader
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 from ultocr.logger.logger import setup_logging
+from ultocr.loader.prepare_data import DistValSampler
 from ultocr.utils.utils_function import create_module, str_to_bool
 from ultocr.trainer.det_train import TrainerDet
 from ultocr.trainer.reg_train import TrainerReg
@@ -24,10 +26,10 @@ def get_data_loader(cfg, logger):
     
     if cfg['trainer']['distributed']:
         train_sampler = DistributedSampler(train_dataset)
-        test_sampler = DistributedSampler(test_dataset)
+        test_sampler = DistValSampler(list(range(len(test_dataset))), batch_size=cfg['dataset']['test_load']['batch_size'], distributed=cfg['trainer']['distributed'])
         train_loader = DataLoader(train_dataset, sampler=train_sampler, batch_size=cfg['dataset']['train_load']['batch_size'],
                                   shuffle=False, num_workers=cfg['dataset']['train_load']['num_workers'])
-        test_loader = DataLoader(test_dataset, sampler=test_sampler, batch_size=cfg['dataset']['test_load']['batch_size'],
+        test_loader = DataLoader(test_dataset, batch_sampler=test_sampler, batch_size=cfg['dataset']['test_load']['batch_size'],
                                  shuffle=False, num_workers=cfg['dataset']['test_load']['num_workers'])
     else:
         train_loader = DataLoader(train_dataset,
@@ -106,13 +108,14 @@ def main(args):
     logger.info('Loaded successful!. Train datasets: {}, test datasets: {}'.format(len(train_loader) * local_world_size * cfg['dataset']['train_load']['batch_size'], len(test_loader) * local_world_size * cfg['dataset']['test_load']['batch_size'])) if local_check else None
     model = create_module(cfg['model']['function'])(cfg)
     logger.info('Model created, trainable parameters:') if local_check else None
-    criterion = create_module(cfg['loss']['function'])
+    criterion = create_module(cfg['loss']['function'])()
     optimizer = create_module(cfg['optimizer']['function'])(cfg, model.parameters())
     post_process = create_module(cfg['post_process']['function'])(cfg)
     logger.info('Optimizer created.') if local_check else None
     logger.info('Training start...') if local_check else None
     
     assert cfg['base']['model_type'] in ['text_detection', 'text_recognition'], 'dont support this type of model'
+    
     if cfg['base']['model_type'] == 'text_detection':
         trainer = TrainerDet(train_loader, test_loader, model, optimizer, criterion, post_process,
                              logger, save_model_dir, cfg)

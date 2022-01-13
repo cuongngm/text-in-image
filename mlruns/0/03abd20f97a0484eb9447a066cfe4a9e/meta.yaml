@@ -1,0 +1,15 @@
+artifact_uri: file:///data/cuongnm1/text-in-image/mlruns/0/03abd20f97a0484eb9447a066cfe4a9e/artifacts
+end_time: 1642009587501
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: deleted
+name: ''
+run_id: 03abd20f97a0484eb9447a066cfe4a9e
+run_uuid: 03abd20f97a0484eb9447a066cfe4a9e
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1642009496523
+status: 4
+tags: []
+user_id: cuongnm1

@@ -23,13 +23,13 @@ class DiceLoss(nn.Module):
 
     
 class CELoss(nn.Module):
-    def __init__():
+    def __init__(self):
         super().__init__()
     
-    def forward(self, pred, gt):
-        loss = F.cross_entropy(pred.contiguous().view(-1, outputs.shape[-1]),
-                              gt[:, 1:].contiguous().view(-1), ignore_index=0)
-        
+    def forward(self, pred, gt, ignore_index):
+        loss = F.cross_entropy(pred, gt, ignore_index=0)
+        return loss
+    
         
 class BalanceCrossEntropyLoss(nn.Module):
     def __init__(self, negative_ratio=3.0, eps=1e-6):

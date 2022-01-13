@@ -12,6 +12,7 @@ import mlflow
 class TrainerDet:
     def __init__(self, train_loader, test_loader, model, optimizer, criterion, post_process,
                  logger, save_model_dir, config):
+        self.config = config
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.distributed = config['trainer']['distributed']
@@ -34,7 +35,7 @@ class TrainerDet:
 
         self.start_epoch = 1
         self.epochs = config['trainer']['num_epoch']
-        self.config = config
+        
         if config['trainer']['sync_batch_norm'] and self.distributed:
             self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
         
@@ -43,17 +44,18 @@ class TrainerDet:
                              find_unused_parameters=True)
             
         if config['trainer']['resume']:
-            assert os.path.isfile(config['base']['ckpt_file']), 'checkpoint path is not correct'
-            logger.info('Resume from checkpoint: {}'.format(config['base']['ckpt_file'])) if self.local_check else None
-            checkpoint = torch.load(config['base']['ckpt_file'])
+            assert os.path.isfile(config['trainer']['ckpt_file']), 'checkpoint path is not correct'
+            logger.info('Resume from checkpoint: {}'.format(config['trainer']['ckpt_file'])) if self.local_check else None
+            checkpoint = torch.load(config['trainer']['ckpt_file'])
             self.start_epoch = checkpoint['epoch']
             self.model.load_state_dict(checkpoint['state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
+            # self.optimizer.load_state_dict(checkpoint['optimizer'])
         else:
             logger.info('Training from scratch...') if self.local_check else None
 
     def train(self):
         self.logger.info('MLflow running...') if self.local_check else None
+        
         if self.distributed:
             dist.barrier()
         best_train_loss = np.inf
@@ -69,6 +71,7 @@ class TrainerDet:
             mlflow.log_metric('Recall', recall)
             mlflow.log_metric('Precision', precision)
             mlflow.log_metric('Hmean', hmean)
+            
             self.logger.info('Test: Recall: {} - Precision:{} - Hmean: {}'.format(recall, precision, hmean)) if self.local_check else None
             if hmean > best_hmean:
                 best_hmean = hmean
@@ -113,7 +116,6 @@ class TrainerDet:
             train_loss += total_loss
             acc = score_shrink_map['Mean Acc']
             iou_shrink_map = score_shrink_map['Mean IoU']
-            mlflow.log_param("Epochs", epoch)
             mlflow.log_param("Batch size", batch['img'].size(0))
             mlflow.log_param("Learning rate", lr)
             if idx % self.config['trainer']['log_iter'] == 0:

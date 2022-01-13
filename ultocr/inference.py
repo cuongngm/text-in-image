@@ -17,7 +17,7 @@ class Detection:
     def __init__(self, cfg):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model = create_module(cfg['model']['function'])(cfg)
-        model.load_state_dict(torch.load('saved/ckpt/DBnet/0108_112716/last_cp.pth', map_location=self.device)['state_dict'])
+        model.load_state_dict(torch.load('saved/ckpt/DBnet/0113_115109/best_cp.pth', map_location=self.device)['state_dict'])
         self.model = model.to(self.device)
         self.model.eval()
         self.seg_obj = create_module(cfg['post_process']['function'])(cfg)
@@ -140,6 +140,7 @@ class End2end:
     def get_result(self):
         img = cv2.imread(self.img_path)
         det_result = self.detection.detect(img)
+        """
         all_img_crop = det_result['boundary_result']
         if len(all_img_crop) == 0:
             result = 'khong co text trong anh'
@@ -149,5 +150,6 @@ class End2end:
             img_pil = Image.fromarray(img_crop.astype('uint8'), 'RGB')
             all_img_pil.append(img_pil)
         result = self.recognition.recognize(all_img_pil)
+        """
         return det_result
 

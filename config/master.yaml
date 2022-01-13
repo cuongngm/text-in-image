@@ -2,7 +2,7 @@ base:
   model_type: text_recognition
   algorithm: MASTER
   save_dir: saved
-  gpu_id: 0
+  gpu_id: 1
 
 dataset:
   type: 'txt'  # lmdb / txt
@@ -15,7 +15,7 @@ dataset:
   test_load:
     test_img_dir: 'dataset/hoadon_ocr'
     test_label_dir: 'dataset/hoadon_ocr/test.txt'
-    batch_size: 16
+    batch_size: 4
     num_workers: 4
   preprocess:
     case_sensitive: False

@@ -58,7 +58,8 @@ class TrainerReg:
         self.val_step_interval = cfg['trainer']['val_step_interval']
         self.early_stop = cfg['trainer']['early_stop']
         
-        self.greedy_decode = create_module(cfg['post_process']['function'])(cfg)
+        self.criterion = criterion
+        self.greedy_decode = post_process
         self.train_metrics = AverageMetricTracker('loss')
         self.val_metrics = AverageMetricTracker('loss', 'word_acc', 'word_case_insensitive',
                                                 'edit_distance_acc')
@@ -69,8 +70,13 @@ class TrainerReg:
             dist.barrier()  # syncing machines before training
         not_improved_count = 0
         for epoch in range(self.start_epoch, self.epochs + 1):
+            if self.distributed:
+                self.train_loader.sampler.set_epoch(epoch)
+            self.val_loader.batch_sampler.set_epoch(
+                epoch) if self.val_loader.batch_sampler is not None else None
+            
             torch.cuda.empty_cache()
-            # result_dict = self.train_epoch(epoch)
+            result_dict = self.train_epoch(epoch)
             if self.do_validation and epoch % self.validation_epoch == 0:
                 val_metric_res_dict = self.valid_epoch(epoch)
                 val_res = f"\nValidation result after {epoch} epoch:" \
@@ -106,8 +112,9 @@ class TrainerReg:
             target = target.permute(1, 0)
             with torch.autograd.set_detect_anomaly(True):
                 outputs = self.model(images, target[:, :-1])
-                loss = f.cross_entropy(outputs.contiguous().view(-1, outputs.shape[-1]),
+                loss = self.criterion(outputs.contiguous().view(-1, outputs.shape[-1]),
                                        target[:, 1:].contiguous().view(-1), ignore_index=LabelTransformer.PAD)
+               
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -116,7 +123,7 @@ class TrainerReg:
             if self.distributed:
                 reduced_metrics_tensor = torch.tensor([batch_total, reduced_loss]).float().to(self.device)
                 dist.barrier()
-                reduced_metrics_tensor = self.sum_tesnor(reduced_metrics_tensor)
+                reduced_metrics_tensor = self.sum_tensor(reduced_metrics_tensor)
                 batch_total, reduced_loss = reduced_metrics_tensor.cpu().numpy()
                 reduced_loss = reduced_loss / dist.get_world_size()
             global_step = (epoch - 1) * self.len_step + step_idx - 1

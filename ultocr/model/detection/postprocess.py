@@ -14,7 +14,7 @@ class DBPostProcess:
         self.unclip_ratio = config['post_process']['unclip_ratio']
         self.min_size = config['post_process']['min_size']
 
-    def __call__(self, batch, pred, is_output_polygon=False):
+    def __call__(self, batch, pred):
         """
         :param batch: (image, polygons, ignore_Tags)
         image: tensor (N, C, H, W) (1, 3, 640, 640)
@@ -25,6 +25,7 @@ class DBPostProcess:
         thresh: thresh hold prediction (N, H, W)
         thresh_binary: binarized with threshold (N, H, W)
         """
+        is_output_polygon = self.is_poly
         pred = pred[:, 0, :, :]
         segmentation = self.binarize(pred)
         boxes_batch = []

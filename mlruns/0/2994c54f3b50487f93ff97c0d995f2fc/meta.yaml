@@ -1,0 +1,15 @@
+artifact_uri: file:///data/cuongnm1/text-in-image/mlruns/0/2994c54f3b50487f93ff97c0d995f2fc/artifacts
+end_time: 1642055721593
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: 2994c54f3b50487f93ff97c0d995f2fc
+run_uuid: 2994c54f3b50487f93ff97c0d995f2fc
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1642049467936
+status: 4
+tags: []
+user_id: cuongnm1

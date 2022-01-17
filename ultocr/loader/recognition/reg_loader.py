@@ -3,19 +3,19 @@ import cv2
 import numpy as np
 from PIL import Image
 import torch
+import torchvision.transforms as transforms
 from torch.utils.data import Dataset
-from ultocr.loader.recognition.translate import LabelTransformer
 from ultocr.utils.utils_function import create_module
 
 
 class RegLoader(Dataset):
     def __init__(self, config, is_training=True):
-        self.img_w = config['dataset']['new_shape'][1]
-        self.img_h = config['dataset']['new_shape'][0]
-        
+        self.img_w = config['dataset']['new_shape'][0]
+        self.img_h = config['dataset']['new_shape'][1]
+        self.max_length = config['post_process']['max_len']
         self.case_sensitive = config['dataset']['preprocess']['case_sensitive']
         self.to_gray = config['dataset']['preprocess']['to_gray']
-        self.transform = create_module(config['dataset']['preprocess']['transform'])(self.img_h, self.img_w)
+        self.transform = create_module(config['dataset']['preprocess']['transform'])(self.img_w, self.img_h)
 
         if is_training:
             images, labels = self.get_base_info(config['dataset']['train_load']['train_img_dir'],
@@ -36,7 +36,7 @@ class RegLoader(Dataset):
                 line = line.strip().split('\t')
                 image_name = line[0]
                 label = '\n'.join(line[1:])
-                if len(label) > LabelTransformer.max_length and LabelTransformer.max_length != -1:
+                if len(label) > self.max_length and self.max_length != -1:
                     continue
                 image_name = os.path.join(img_root, image_name)
                 image_names.append(image_name)
@@ -60,14 +60,13 @@ class RegLoader(Dataset):
         if self.transform is not None:
             img, width_ratio = self.transform(img)
             
-        if self.is_training:
-            label = self.all_labels[idx]
+       
+        label = self.all_labels[idx]
 
-            if not self.case_sensitive:
-                label = label.lower()
-            return img, label
-        else:
-            return img, file_name
+        if not self.case_sensitive:
+            label = label.lower()
+        return img, label
+
 
 
 class TextInference(Dataset):
@@ -108,21 +107,41 @@ class DistCollateFn:
             return dict(batch_size=batch_size,
                         images=image_batch_tensor,
                         file_names=file_names)
+    
+class Resize(object):
+    def __init__(self, new_w, new_h, interpolation=Image.BILINEAR, gray_format=True):
+        self.w, self.h = new_w, new_h
+        self.interpolation = interpolation
+        self.toTensor = transforms.ToTensor()
+        self.gray_format = gray_format
 
+    def __call__(self, img):
+        img_w, img_h = img.size
+        if img_w / img_h < 1.:
+                img = img.resize((self.h, self.h), self.interpolation)
+                resize_img = np.zeros((self.h, self.w, 3), dtype=np.uint8)
+                img = np.array(img, dtype=np.uint8)  # (w,h) -> (h,w,c)
+                resize_img[0:self.h, 0:self.h, :] = img
+                img = resize_img
+                width = self.h
+        elif img_w / img_h < self.w / self.h:
+            ratio = img_h / self.h
+            new_w = int(img_w / ratio)
+            img = img.resize((new_w, self.h), self.interpolation)
+            resize_img = np.zeros((self.h, self.w, 3), dtype=np.uint8)
+            img = np.array(img, dtype=np.uint8)  # (w,h) -> (h,w,c)
+            resize_img[0:self.h, 0:new_w, :] = img
+            img = resize_img
+            width = new_w
+        else:
+            img = img.resize((self.w, self.h), self.interpolation)
+            resize_img = np.zeros((self.h, self.w, 3), dtype=np.uint8)
+            img = np.array(img, dtype=np.uint8)  # (w,h) -> (h,w,c)
+            resize_img[:, :, :] = img
+            img = resize_img
+            width = self.w
 
-class Resize:
-    def __init__(self, new_h, new_w, is_gray=False):
-        self.new_h = new_h
-        self.new_w = new_w
-        self.is_gray = is_gray
+        img = self.toTensor(img)
+        img.sub_(0.5).div_(0.5)
+        return img, width / self.w
 
-    def __call__(self, img:Image.Image):
-        if self.is_gray:
-            img = img.convert('L')
-        img = np.array(img)
-        h, w = img.shape[:2]
-        resize_img = cv2.resize(img, (self.new_w, self.new_h))
-        full_channel_img = resize_img[..., None] if len(resize_img.shape) == 2 else resize_img
-        resize_img_tensor = torch.from_numpy(np.transpose(full_channel_img, (2, 0, 1))).to(torch.float32)
-        resize_img_tensor.sub_(127.5).div_(127.5)
-        return resize_img_tensor, w/self.new_w

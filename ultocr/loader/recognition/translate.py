@@ -5,19 +5,9 @@ import torch
 
 class LabelConverter:
     def __init__(self, classes, max_length=-1, ignore_over=False):
-        cls_list = None
-        if isinstance(classes, str):
-            cls_list = list(classes)
-        if isinstance(classes, list):
-            cls_list = classes
-        elif isinstance(classes, Path):
-            p = Path(classes)
-            if not p.exists():
-                raise RuntimeError('key file is not found')
-            with p.open(encoding='utf8') as f:
-                classes = f.read()
-                classes = classes.strip()
-                cls_list = list(classes)
+        with open(classes, 'r') as fr:
+            lines = fr.readlines()[0].strip()
+            cls_list = list(lines)
         self.alphabet = cls_list
         self.alphabet_mapper = {'<EOS>': 1, '<SOS>': 2, '<PAD>': 0, '<UNK>': 3}
         for i, item in enumerate(self.alphabet):
@@ -63,5 +53,5 @@ class LabelConverter:
         return texts
 
 
-LabelTransformer = LabelConverter('dataset/vocab/keysVN.txt',
-                                  max_length=100, ignore_over=False)
+# LabelTransformer = LabelConverter('dataset/vocab/keysVN.txt',
+#                                   max_length=100, ignore_over=False)

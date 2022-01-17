@@ -23,8 +23,7 @@ class TrainerDet:
         self.logger = logger
         self.save_model_dir = save_model_dir
         self.device, self.device_ids = self.prepare_device(config['trainer']['local_rank'],
-                                                           config['trainer']['local_world_size'])
-        logger.info('Device_ids:{}'.format(self.device_ids)) if self.local_check else None
+                                                           config['trainer']['local_world_size'])    
         self.model = model.to(self.device)
         self.optimizer = optimizer
         self.criterion = criterion
@@ -55,7 +54,6 @@ class TrainerDet:
 
     def train(self):
         self.logger.info('MLflow running...') if self.local_check else None
-        
         if self.distributed:
             dist.barrier()
         best_train_loss = np.inf

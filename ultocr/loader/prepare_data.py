@@ -6,6 +6,8 @@ import numpy as np
 from shutil import copyfile
 from random import shuffle
 import pandas as pd
+import torch.distributed as dist
+from torch.utils.data.sampler import Sampler
 
 
 class DistValSampler(Sampler):

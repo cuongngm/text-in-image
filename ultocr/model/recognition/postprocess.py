@@ -11,16 +11,14 @@ def subsequent_mask(tgt, padding_symbol):
 
 class MASTERpostprocess:
     def __init__(self, config):
-        self.config = config
         self.max_len = config['post_process']['max_len']
-        self.sos_symbol = 1
         self.padding_symbol = 0
         self.start_symbol = 2
         
-    def __call__(self, model, input, device='cpu'):
+    def greedy_decode(self, model, input, device='cpu'):
         batch_size = input.size(0)
         memory = model.encode(input, None)
-
+        # print('memory', memory)
         ys = torch.ones((batch_size, self.max_len + 2), dtype=torch.long).fill_(self.padding_symbol).to(device)
         probs = torch.ones((batch_size, self.max_len + 2), dtype=torch.float).to(device)
         ys[:, 0] = self.start_symbol
@@ -28,7 +26,8 @@ class MASTERpostprocess:
         # check_eos = torch.empty(batch_size, dtype=torch.long)
         # check_eos = torch.ones_like(check).to(device)
         for i in range(self.max_len + 1):
-            out = model.decode(memory, None, ys, subsequent_mask(ys, self.padding_symbol))
+            print('Step: {}'.format(i))
+            out = model.decode(memory, None, ys, subsequent_mask(ys, self.padding_symbol).to(device))
             out = model.generator(out)
             prob = F.softmax(out, dim=-1)
             max_probs, next_word = torch.max(prob, dim=-1)

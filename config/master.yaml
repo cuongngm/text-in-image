@@ -15,7 +15,7 @@ dataset:
   test_load:
     test_img_dir: 'dataset/hoadon_ocr'
     test_label_dir: 'dataset/hoadon_ocr/test.txt'
-    batch_size: 4
+    batch_size: 16
     num_workers: 4
   preprocess:
     case_sensitive: False
@@ -36,7 +36,6 @@ model:
     use_gcb: [False, True, True, True]
   common:
     with_encoder: False
-    tgt_vocab: 36
     d_model: 512
     nhead: 8
   encoder:
@@ -74,7 +73,7 @@ scheduler:
   gamma: 0.1
 
 post_process:
-  max_len: 128
+  max_len: 100
   function: ultocr.model.recognition.postprocess,MASTERpostprocess
   
 trainer:

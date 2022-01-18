@@ -13,7 +13,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from ultocr.loader.recognition.reg_loader import DistCollateFn
 from ultocr.loader.recognition.translate import LabelConverter
 from ultocr.metrics.reg_metrics import AverageMetricTracker
-from ultocr.utils.utils_function import create_module
+from ultocr.utils.utils_function import create_module, save_checkpoint
+from ultocr.model.recognition.postprocess import greedy_decode
 
 
 class TrainerReg:
@@ -27,7 +28,7 @@ class TrainerReg:
         else:
             self.local_check = True
         self.logger = logger
-        self.checkpoint_dir = config['trainer']['save_dir']
+        self.save_model_dir = save_model_dir
         self.device, self.device_ids = self.prepare_device(config['trainer']['local_rank'],
                                                            config['trainer']['local_world_size'])
         self.model = model.to(self.device)
@@ -42,7 +43,7 @@ class TrainerReg:
         self.epochs = config['trainer']['epochs']
         self.resume = config['trainer']['resume']
 
-        self.monitor_best = np.inf
+        self.monitor_best = 0
      
         if self.distributed:
             self.model = DDP(self.model, device_ids=self.device_ids, output_device=self.device_ids[0],
@@ -51,10 +52,11 @@ class TrainerReg:
         if config['trainer']['resume']:
             assert os.path.isfile(config['trainer']['ckpt_file']), 'checkpoint path is not correct'
             logger.info('Resume from checkpoint: {}'.format(config['trainer']['ckpt_file'])) if self.local_check else None
-            checkpoint = torch.load(config['trainer']['ckpt_file'])
+            checkpoint = torch.load(config['trainer']['ckpt_file'], map_location=self.device)
             self.start_epoch = checkpoint['epoch']
             self.model.load_state_dict(checkpoint['state_dict'])
             # self.optimizer.load_state_dict(checkpoint['optimizer'])
+
         else:
             logger.info('Training from scratch...') if self.local_check else None
             
@@ -77,7 +79,7 @@ class TrainerReg:
             # self.test_loader.batch_sampler.set_epoch(epoch) if self.test_loader.batch_sampler is not None else None
             
             torch.cuda.empty_cache()
-            # result_dict = self.train_epoch(epoch)
+            result_dict = self.train_epoch(epoch)
             if self.do_validation and epoch % self.validation_epoch == 0:
                 val_metric_res_dict = self.valid_epoch(epoch)
                 val_res = f"\nValidation result after {epoch} epoch:" \
@@ -98,7 +100,15 @@ class TrainerReg:
                                      'Training stops'.format(self.early_stop)) if self.local_check else None
                     break
                 if best:
-                    self.save_checkpoint(epoch, save_best=best)
+                    save_checkpoint({
+                    'epoch': epoch,
+                    'state_dict': self.model.state_dict()
+                }, self.save_model_dir, 'best_cp.pth')
+        save_checkpoint({
+        'epoch': self.epochs,
+        'state_dict': self.model.state_dict()
+    }, self.save_model_dir, 'last_cp.pth')
+        self.logger.info('Saved model') if self.local_check else None
 
     def train_epoch(self, epoch):
         self.model.train()
@@ -146,7 +156,7 @@ class TrainerReg:
         for step_idx, input_data_item in enumerate(self.test_loader):
             batch_size = input_data_item[0].size(0)
             images = input_data_item[0]
-            print('images', images)
+         
             text_label = input_data_item[1]
             encode_label = self.convert.encode(text_label)
             
@@ -156,13 +166,14 @@ class TrainerReg:
             else:
                 with torch.no_grad():
                     images = images.to(self.device)
-                    """
+        
                     if hasattr(self.model, 'module'):
                         model = self.model.module
                     else:
                         model = self.model
-                    """
-                outputs, _ = self.post_process.greedy_decode(self.model, images, device=self.device)
+                    
+                outputs = greedy_decode(model, images, 100, 2, 0, self.device, True)
+                # outputs = self.post_process.greedy_decode(model, images, device=self.device)
                 correct = 0
                 correct_case_ins = 0
                 total_distance_ref = 0
@@ -249,40 +260,9 @@ class TrainerReg:
                 not_improved_count += 1
         return best, not_improved_count
 
-    def save_checkpoint(self, epoch, save_best=False, step_idx=None):
-        if hasattr(self.model, 'module'):
-            arch_name = type(self.model.module).__name__
-            model_state_dict = self.model.module.state_dict()
-        else:
-            arch_name = type(self.model).__name__
-            model_state_dict = self.model.state_dict()
-        state = {
-            'arch': arch_name,
-            'epoch': epoch,
-            'model_state_dict': model_state_dict
-        }
-        if step_idx is None:
-            filename = str(self.checkpoint_dir / 'epoch{}.pth'.format(epoch))
-        else:
-            filename = str(self.checkpoint_dir / 'epoch{}-step{}.pth'.format(epoch, step_idx))
-        torch.save(state, filename)
-        self.logger.info('Saving checkpoint: {}...'.format(filename)) if self.local_check else None
-        if save_best:
-            best_path = str(self.checkpoint_dir / 'model_best.pth')
-            shutil.copyfile(filename, best_path)
-            self.logger.info('Saving current best at epoch {}'.format(epoch)) if self.local_check else None
-
     def get_lr(self):
         for group in self.optimizer.param_groups:
             return group['lr']
-
-    def resume_checkpoint(self, resume_path):
-        resume_path = str(resume_path)
-        self.logger.info('Loading checkpoint: {}...'.format(resume_path)) if self.local_check else None
-        checkpoint = torch.load(resume_path, map_location=self.device)
-        self.start_epoch = checkpoint['epoch'] + 1
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.logger.info('Checkpoint loaded. Resume from epoch {}'.format(self.start_epoch)) if self.local_check else None
 
     def prepare_device(self, local_rank, local_world_size):
         if self.distributed:

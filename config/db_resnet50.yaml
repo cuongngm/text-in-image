@@ -41,7 +41,7 @@ loss:
   bce_scale: 10
 
 optimizer:
-  base_lr: 0.007
+  base_lr: 0.002
   weight_decay: 0.0001
   momentum: 0.9
   function: ultocr.model.optimizer,SGDDecay

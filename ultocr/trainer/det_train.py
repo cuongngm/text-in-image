@@ -83,14 +83,12 @@ class TrainerDet:
                     'epoch': epoch,
                     'state_dict': self.model.state_dict()
                 }, self.save_model_dir, 'best_cp.pth')
-        self.logger.info('Training completed') if self.local_check else None
+        
         save_checkpoint({
             'epoch': self.epochs,
             'state_dict': self.model.state_dict()
         }, self.save_model_dir, 'last_cp.pth')
         self.logger.info('Saved model') if self.local_check else None
-        if self.distributed:
-            dist.destroy_process_group()
 
     def train_epoch(self, epoch):
         self.model.train()

@@ -14,7 +14,7 @@ class DBPostProcess:
         self.unclip_ratio = config['post_process']['unclip_ratio']
         self.min_size = config['post_process']['min_size']
 
-    def __call__(self, batch, pred):
+    def __call__(self, batch, pred, is_output_polygon=True):
         """
         :param batch: (image, polygons, ignore_Tags)
         image: tensor (N, C, H, W) (1, 3, 640, 640)

@@ -79,5 +79,6 @@ if __name__ == '__main__':
     predict_time = time.time()
     result = model.get_result()
     print('predict time:', time.time() - predict_time)
-    img = result['img']
-    cv2.imwrite(os.path.join(opt.save_path, result_name), img)
+    # img = result['img']
+    # cv2.imwrite(os.path.join(opt.save_path, result_name), img)
+    print(result)

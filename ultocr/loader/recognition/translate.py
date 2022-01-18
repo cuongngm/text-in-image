@@ -13,6 +13,9 @@ class LabelConverter:
         for i, item in enumerate(self.alphabet):
             self.alphabet_mapper[item] = i + 4
         self.alphabet_inverse_mapper = {v: k for k, v in self.alphabet_mapper.items()}
+        # fix missing 206 index
+        self.alphabet_mapper[','] = 206
+        self.alphabet_inverse_mapper[206] = ','
         self.EOS = self.alphabet_mapper['<EOS>']
         self.SOS = self.alphabet_mapper['<SOS>']
         self.PAD = self.alphabet_mapper['<PAD>']

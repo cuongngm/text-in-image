@@ -10,14 +10,16 @@ from torch.utils.data import Dataset, DataLoader
 from ultocr.utils.utils_function import create_module
 from ultocr.loader.recognition.reg_loader import TextInference
 from ultocr.utils.det_utils import four_point_transform, sort_by_line, test_preprocess, draw_bbox
-from ultocr.utils.reg_utils import ResizeWeight, ConvertLabelToMASTER, greedy_decode_with_probability
+from ultocr.loader.recognition.translate import LabelConverter
+from ultocr.loader.recognition.reg_loader import Resize
+from ultocr.model.recognition.postprocess import greedy_decode_with_probability
 
 
 class Detection:
     def __init__(self, cfg):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model = create_module(cfg['model']['function'])(cfg)
-        model.load_state_dict(torch.load('saved/ckpt/DBnet/0113_115109/best_cp.pth', map_location=self.device)['state_dict'])
+        model.load_state_dict(torch.load('saved/ckpt/DBnet/0118_155141/best_hmean.pth', map_location=self.device)['state_dict'])
         self.model = model.to(self.device)
         self.model.eval()
         self.seg_obj = create_module(cfg['post_process']['function'])(cfg)
@@ -31,11 +33,14 @@ class Detection:
             preds = self.model(tmp_img)
         batch = {'shape': [(h_origin, w_origin)]}
         boxes_list, scores_list = self.seg_obj(batch, preds, is_output_polygon=False)
-        boxes_list, scores_list = boxes_list[0].tolist(), scores_list[0]
-        img_rs = draw_bbox(img, np.array(boxes_list), color=(0, 0, 255), thickness=1)
+ 
+        boxes_list, scores_list = boxes_list[0], scores_list[0]
+        
+        # img_rs = draw_bbox(img, np.array(boxes_list), color=(0, 0, 255), thickness=1)
         boxes_list.sort(key=lambda x: x[0][1])
         boxes_list_remove = []
         for boxes in boxes_list:
+            boxes = boxes.tolist()
             if boxes[0] == boxes[2] or boxes[1] == boxes[3]:
                 continue
             else:
@@ -65,7 +70,7 @@ class Detection:
                 # warped = crop_box(img, boxes)
                 all_warped.append(warped)
 
-            det_result['img'] = img_rs
+            # det_result['img'] = img_rs
             det_result['box_coordinate'] = after_sort
             det_result['boundary_result'] = all_warped
             return det_result
@@ -74,19 +79,19 @@ class Detection:
 class Recognition:
     def __init__(self, cfg):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.img_w = cfg['dataset']['img_w']
-        self.img_h = cfg['dataset']['img_h']
+        self.img_w = cfg['dataset']['new_shape'][0]
+        self.img_h = cfg['dataset']['new_shape'][1]
         self.batch = 16
-        self.convert = ConvertLabelToMASTER(vocab_file='ultocr/utils/vocab.txt',
+        self.convert = LabelConverter(classes=cfg['dataset']['vocab'],
                                             max_length=100, ignore_over=False)
-        model = create_module(cfg['functional']['master'])(cfg)
-        state_dict = torch.load('saved/weight/master_30e.pth', map_location=self.device)
-        model.load_state_dict(state_dict['model_state_dict'])
+        model = create_module(cfg['model']['function'])(cfg)
+        state_dict = torch.load('saved/ckpt/MASTER/0118_152255/best_cp.pth', map_location=self.device)
+        model.load_state_dict(state_dict['state_dict'])
         self.model = model.to(self.device)
         self.model.eval()
 
     def recognize(self, list_img):
-        text_dataset = TextInference(list_img, transform=ResizeWeight((self.img_w, self.img_h), gray_format=False))
+        text_dataset = TextInference(list_img, transform=Resize(self.img_w, self.img_h, gray_format=False))
         text_loader = DataLoader(text_dataset, batch_size=self.batch, shuffle=False, num_workers=4, drop_last=False)
         pred_results = []
         for step_idx, data_item in enumerate(text_loader):
@@ -124,23 +129,23 @@ class Recognition:
 
 
 class End2end:
-    def __init__(self, img_path, det_model='DB', reg_model=None,
+    def __init__(self, img_path, det_model='DB', reg_model='MASTER',
                  det_config='config/db_resnet50.yaml', reg_config='config/master.yaml'):
         self.img_path = img_path
         assert det_model in ['DB'], '{} model is not implement'.format(det_model)
-        # assert reg_model in ['MASTER'], '{} model is not implement'.format(reg_model)
+        assert reg_model in ['MASTER'], '{} model is not implement'.format(reg_model)
         with open(det_config, 'r') as stream:
             det_cfg = yaml.safe_load(stream)
         self.detection = Detection(det_cfg)
-        if reg_model is not None: 
-            with open(reg_config, 'r') as stream:
-                reg_cfg = yaml.safe_load(stream)
-            self.recognition = Recognition(reg_cfg)
+        
+        with open(reg_config, 'r') as stream:
+            reg_cfg = yaml.safe_load(stream)
+        self.recognition = Recognition(reg_cfg)
           
     def get_result(self):
         img = cv2.imread(self.img_path)
         det_result = self.detection.detect(img)
-        """
+     
         all_img_crop = det_result['boundary_result']
         if len(all_img_crop) == 0:
             result = 'khong co text trong anh'
@@ -150,6 +155,6 @@ class End2end:
             img_pil = Image.fromarray(img_crop.astype('uint8'), 'RGB')
             all_img_pil.append(img_pil)
         result = self.recognition.recognize(all_img_pil)
-        """
-        return det_result
+    
+        return result
 

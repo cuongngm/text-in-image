@@ -26,9 +26,9 @@ dataset:
 
 model:
   gcb:
-    in_channels: 32
+    in_channels: 3
     ratio: 0.0625
-    headers: 8
+    headers: 1
     pooling_type: 'att'
     att_scale: True
     fusion_type: 'channel_concat'
@@ -89,7 +89,7 @@ trainer:
   local_rank: -1
   global_rank: -1
   early_stop: 10
-  resume: False
-  ckpt_file: checkpoint/model_best.pth
+  resume: True
+  ckpt_file: saved/ckpt/MASTER/0118_152255/best_cp.pth
 
 

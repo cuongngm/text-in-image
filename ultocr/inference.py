@@ -32,15 +32,15 @@ class Detection:
         with torch.no_grad():
             preds = self.model(tmp_img)
         batch = {'shape': [(h_origin, w_origin)]}
-        boxes_list, scores_list = self.seg_obj(batch, preds, is_output_polygon=False)
+        boxes_list, scores_list = self.seg_obj(batch, preds, inference=True)
  
-        boxes_list, scores_list = boxes_list[0], scores_list[0]
+        boxes_list, scores_list = boxes_list[0].tolist(), scores_list[0]
         
         # img_rs = draw_bbox(img, np.array(boxes_list), color=(0, 0, 255), thickness=1)
         boxes_list.sort(key=lambda x: x[0][1])
         boxes_list_remove = []
         for boxes in boxes_list:
-            boxes = boxes.tolist()
+         
             if boxes[0] == boxes[2] or boxes[1] == boxes[3]:
                 continue
             else:
@@ -62,7 +62,7 @@ class Detection:
 
                     box = np.array(box).reshape(-1).tolist()
                     after_sort.append(box)
-            # rs = draw_bbox(img, np.array(after_sort), color=(0, 0, 255), thickness=2)
+            rs = draw_bbox(img, np.array(after_sort), color=(0, 0, 255), thickness=2)
             # return rs
             all_warped = []
             for index, boxes in enumerate(after_sort2):
@@ -70,7 +70,7 @@ class Detection:
                 # warped = crop_box(img, boxes)
                 all_warped.append(warped)
 
-            # det_result['img'] = img_rs
+            det_result['img'] = rs
             det_result['box_coordinate'] = after_sort
             det_result['boundary_result'] = all_warped
             return det_result
@@ -86,6 +86,7 @@ class Recognition:
                                             max_length=100, ignore_over=False)
         model = create_module(cfg['model']['function'])(cfg)
         state_dict = torch.load('saved/ckpt/MASTER/0118_152255/best_cp.pth', map_location=self.device)
+        # state_dict = torch.load('saved/master_30e.pth', map_location=self.device)
         model.load_state_dict(state_dict['state_dict'])
         self.model = model.to(self.device)
         self.model.eval()
@@ -145,7 +146,7 @@ class End2end:
     def get_result(self):
         img = cv2.imread(self.img_path)
         det_result = self.detection.detect(img)
-     
+        img_rs = det_result['img']
         all_img_crop = det_result['boundary_result']
         if len(all_img_crop) == 0:
             result = 'khong co text trong anh'
@@ -156,5 +157,5 @@ class End2end:
             all_img_pil.append(img_pil)
         result = self.recognition.recognize(all_img_pil)
     
-        return result
+        return result, img_rs
 

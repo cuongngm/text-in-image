@@ -18,7 +18,7 @@ dataset:
     batch_size: 16
     num_workers: 4
   preprocess:
-    case_sensitive: False
+    case_sensitive: True
     to_gray: False
     transform: ultocr.loader.recognition.reg_loader,Resize
   vocab: 'dataset/vocab/keysVN.txt'
@@ -64,7 +64,7 @@ loss:
   
 optimizer:
   type: 'Adam'
-  base_lr: 0.0004
+  base_lr: 0.0001
   function: ultocr.model.optimizer,AdamDecay
 
 scheduler:
@@ -77,7 +77,7 @@ post_process:
   function: ultocr.model.recognition.postprocess,MASTERpostprocess
   
 trainer:
-  epochs: 100
+  epochs: 29
   do_validation: True
   validation_epoch: 1
   log_step_interval: 200
@@ -90,6 +90,6 @@ trainer:
   global_rank: -1
   early_stop: 10
   resume: True
-  ckpt_file: saved/ckpt/MASTER/0118_152255/best_cp.pth
+  ckpt_file: 'saved/master_30e.pth'
 
 

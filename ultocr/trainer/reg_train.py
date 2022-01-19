@@ -15,6 +15,9 @@ from ultocr.loader.recognition.translate import LabelConverter
 from ultocr.metrics.reg_metrics import AverageMetricTracker
 from ultocr.utils.utils_function import create_module, save_checkpoint
 from ultocr.model.recognition.postprocess import greedy_decode
+import mlflow
+from mlflow.tracking import MlflowClient
+from mlflow.entities.model_registry.model_version_status import ModelVersionStatus
 
 
 class TrainerReg:
@@ -54,7 +57,7 @@ class TrainerReg:
             logger.info('Resume from checkpoint: {}'.format(config['trainer']['ckpt_file'])) if self.local_check else None
             checkpoint = torch.load(config['trainer']['ckpt_file'], map_location=self.device)
             self.start_epoch = checkpoint['epoch']
-            self.model.load_state_dict(checkpoint['state_dict'])
+            self.model.load_state_dict(checkpoint['model_state_dict'])
             # self.optimizer.load_state_dict(checkpoint['optimizer'])
 
         else:
@@ -67,9 +70,14 @@ class TrainerReg:
         log_step = config['trainer']['log_step_interval']
         self.log_step = log_step
         self.val_step_interval = config['trainer']['val_step_interval']
-        self.early_stop = config['trainer']['early_stop']
-        
+        self.early_stop = config['trainer']['early_stop']  
+
     def train(self):
+        client = MlflowClient()
+        artifact_path = 'master-model'
+     
+        with mlflow.start_run() as run:
+            run_num = run.info.run_id
         if self.distributed:
             dist.barrier()  # syncing machines before training
         not_improved_count = 0
@@ -86,12 +94,17 @@ class TrainerReg:
                           f"Word_acc: {val_metric_res_dict['word_acc']:.6f}" \
                           f"Word_acc_case_ins: {val_metric_res_dict['word_acc_case_insensitive']:.6f}" \
                           f"Edit_distance_acc: {val_metric_res_dict['edit_distance_acc']:.6f}"
+            
+                mlflow.log_metric('word_acc', val_metric_res_dict['word_acc'])
+                mlflow.log_metric('word_acc_case_ins', val_metric_res_dict['word_acc_case_insensitive'])
+                mlflow.log_metric('edit_distance_acc', val_metric_res_dict['edit_distance_acc'])
             else:
                 val_res = ''
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
             self.logger.info('[Epoch end] Epoch:[{}/{}] Loss: {:.6f} LR: {:.8f}'
                              .format(epoch, self.epochs, result_dict['loss'], self.get_lr()) + val_res) if self.local_check else None
+            mlflow.log_metric('loss', result_dict['loss'])
             best = False
             if self.do_validation and epoch % self.validation_epoch == 0:
                 best, not_improved_count = self.is_best_monitor_metric(best, not_improved_count, val_metric_res_dict)
@@ -109,7 +122,25 @@ class TrainerReg:
         'state_dict': self.model.state_dict()
     }, self.save_model_dir, 'last_cp.pth')
         self.logger.info('Saved model') if self.local_check else None
+        
+        model_uri = "runs:/{run_id}/{artifact_path}".format(run_id=run_num, artifact_path=artifact_path)
+        mlflow.pytorch.log_model(self.model, artifact_path)
+        mlflow.pytorch.save_model(self.model, artifact_path)
+        mlflow.pytorch.save_state_dict(self.model.state_dict(), artifact_path)
+        mlflow.register_model(model_uri=model_uri, name=artifact_path)
+        """
+        # Grab this latest model version
+        model_version_infos = client.search_model_versions("name = '%s'" % artifact_path)
+        new_model_version = max([model_version_info.version for model_version_info in model_version_infos])
 
+        # Add a description
+        client.update_model_version(
+          name=artifact_path,
+          version=new_model_version,
+          description="Random forest scikit-learn model with 100 decision trees."
+        )
+        """
+    
     def train_epoch(self, epoch):
         self.model.train()
         self.train_metrics.reset()

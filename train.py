@@ -26,20 +26,14 @@ def get_data_loader(cfg, logger):
     test_dataset = create_module(cfg['dataset']['function'])(cfg, is_training=False)
     
     train_sampler = DistributedSampler(train_dataset) if cfg['trainer']['distributed'] else None
-    test_sampler = DistributedSampler(test_dataset) if cfg['trainer']['distributed'] else None
+    # test_sampler = DistributedSampler(test_dataset) if cfg['trainer']['distributed'] else None
+    test_sampler = DistValSampler(list(range(len(test_dataset))), batch_size=cfg['dataset']['test_load']['batch_size'],
+                                 distributed=cfg['trainer']['distributed'])
     train_loader = DataLoader(train_dataset, sampler=train_sampler, batch_size=cfg['dataset']['train_load']['batch_size'],
                                   shuffle=False, num_workers=cfg['dataset']['train_load']['num_workers'])
-    test_loader = DataLoader(test_dataset, batch_sampler=test_sampler, batch_size=cfg['dataset']['test_load']['batch_size'],
-                                 shuffle=False, num_workers=cfg['dataset']['test_load']['num_workers'])
-    """
-    else:
-        train_loader = DataLoader(train_dataset,
-                                  batch_size=cfg['dataset']['train_load']['batch_size'],
-                                  shuffle=False, num_workers=cfg['dataset']['train_load']['num_workers'])
-        test_loader = DataLoader(test_dataset,
-                                 batch_size=cfg['dataset']['test_load']['batch_size'],
-                                 shuffle=False, num_workers=cfg['dataset']['test_load']['num_workers'])
-    """
+    # test_loader = DataLoader(test_dataset, batch_sampler=test_sampler, batch_size=cfg['dataset']['test_load']['batch_size'],
+    #                              shuffle=False, num_workers=cfg['dataset']['test_load']['num_workers'])
+    test_loader = DataLoader(test_dataset, batch_sampler=test_sampler, batch_size=1, num_workers=cfg['dataset']['test_load']['num_workers'])
     return train_loader, test_loader
 
 

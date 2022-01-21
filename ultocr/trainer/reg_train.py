@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import os
 import shutil
 import argparse
@@ -47,8 +48,9 @@ class TrainerReg:
         self.resume = config['trainer']['resume']
 
         self.monitor_best = 0
-     
+        
         if self.distributed:
+            self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
             self.model = DDP(self.model, device_ids=self.device_ids, output_device=self.device_ids[0],
                              find_unused_parameters=True)
         # resume from checkpoint
@@ -57,7 +59,15 @@ class TrainerReg:
             logger.info('Resume from checkpoint: {}'.format(config['trainer']['ckpt_file'])) if self.local_check else None
             checkpoint = torch.load(config['trainer']['ckpt_file'], map_location=self.device)
             self.start_epoch = checkpoint['epoch']
-            self.model.load_state_dict(checkpoint['model_state_dict'])
+            state_dict = checkpoint['state_dict']
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                if 'module' not in k:
+                    k = 'module.' + k
+                else:
+                    k = k.replace('features.module.', 'module.features.')
+                new_state_dict[k] = v
+            self.model.load_state_dict(new_state_dict)
             # self.optimizer.load_state_dict(checkpoint['optimizer'])
 
         else:
@@ -75,6 +85,7 @@ class TrainerReg:
     def train(self):
         client = MlflowClient()
         artifact_path = 'master-model'
+        mlflow.set_tracking_uri("sqlite:///mlruns.db")
      
         with mlflow.start_run() as run:
             run_num = run.info.run_id
@@ -122,11 +133,12 @@ class TrainerReg:
         'state_dict': self.model.state_dict()
     }, self.save_model_dir, 'last_cp.pth')
         self.logger.info('Saved model') if self.local_check else None
-        
+       
         model_uri = "runs:/{run_id}/{artifact_path}".format(run_id=run_num, artifact_path=artifact_path)
+        print(model_uri)
         mlflow.pytorch.log_model(self.model, artifact_path)
         mlflow.pytorch.save_model(self.model, artifact_path)
-        mlflow.pytorch.save_state_dict(self.model.state_dict(), artifact_path)
+        # mlflow.pytorch.save_state_dict(self.model.state_dict(), artifact_path)
         mlflow.register_model(model_uri=model_uri, name=artifact_path)
         """
         # Grab this latest model version
@@ -191,45 +203,46 @@ class TrainerReg:
             text_label = input_data_item[1]
             encode_label = self.convert.encode(text_label)
             
-            if self.distributed:
-                word_acc, word_acc_case_ins, edit_distance_acc, total_distance_ref, batch_total =\
-                    self.distributed_predict(batch_size, images, text_label)
-            else:
-                with torch.no_grad():
-                    images = images.to(self.device)
-        
-                    if hasattr(self.model, 'module'):
-                        model = self.model.module
-                    else:
-                        model = self.model
-                    
-                outputs = greedy_decode(model, images, 100, 2, 0, self.device, True)
-                # outputs = self.post_process.greedy_decode(model, images, device=self.device)
-                correct = 0
-                correct_case_ins = 0
-                total_distance_ref = 0
-                total_edit_distance = 0
-                for index, (pred, text_gold) in enumerate(zip(outputs[:, 1:], text_label)):
-                    predict_text = ''
-                    for i in range(len(pred)):
-                        if pred[i] == self.convert.EOS: break
-                        if pred[i] == self.convert.UNK: continue
-                        decoded_char = self.convert.decode(pred[i])
-                        predict_text += decoded_char
-                    # print('gt:', text_gold)
-                    # print('pred:', predict_text)
-                    ref = len(text_gold)
-                    edit_distance = distance.levenshtein(text_gold, predict_text)
-                    total_distance_ref += ref
-                    total_edit_distance += edit_distance
-                    if predict_text == text_gold:
-                        correct += 1
-                    if predict_text.lower() == text_gold.lower():
-                        correct_case_ins += 1
-                batch_total = images.shape[0]
-                word_acc = correct / batch_total
-                word_acc_case_ins = correct_case_ins / batch_total
-                edit_distance_acc = 1 - total_edit_distance/total_distance_ref
+            # if self.distributed:
+            #     word_acc, word_acc_case_ins, edit_distance_acc, total_distance_ref, batch_total =\
+            #         self.distributed_predict(batch_size, images, text_label)
+            # else:
+            with torch.no_grad():
+                images = images.to(self.device)
+
+                if hasattr(self.model, 'module'):
+                    model = self.model.module
+                else:
+                    model = self.model
+
+            outputs = greedy_decode(model, images, 100, 2, 0, self.device, True)
+            # outputs = self.post_process.greedy_decode(model, images, device=self.device)
+            correct = 0
+            correct_case_ins = 0
+            total_distance_ref = 0
+            total_edit_distance = 0
+            for index, (pred, text_gold) in enumerate(zip(outputs[:, 1:], text_label)):
+                predict_text = ''
+                for i in range(len(pred)):
+                    if pred[i] == self.convert.EOS: break
+                    if pred[i] == self.convert.UNK: continue
+                    decoded_char = self.convert.decode(pred[i])
+                    predict_text += decoded_char
+                # print('gt:', text_gold)
+                # print('pred:', predict_text)
+                ref = len(text_gold)
+                edit_distance = distance.levenshtein(text_gold, predict_text)
+                total_distance_ref += ref
+                total_edit_distance += edit_distance
+                if predict_text == text_gold:
+                    correct += 1
+                if predict_text.lower() == text_gold.lower():
+                    correct_case_ins += 1
+            batch_total = images.shape[0]
+            word_acc = correct / batch_total
+            word_acc_case_ins = correct_case_ins / batch_total
+            edit_distance_acc = 1 - total_edit_distance/total_distance_ref
+            
             self.val_metrics.update('word_acc', word_acc, batch_total)
             self.val_metrics.update('word_acc_case_insensitive', word_acc_case_ins, batch_total)
             self.val_metrics.update('edit_distance_acc', edit_distance_acc, total_distance_ref)
@@ -246,7 +259,7 @@ class TrainerReg:
                     model = self.model.module
                 else:
                     model = self.model
-                outputs, _ = self.greedy_decode(model, images, device=self.device)
+                outputs = greedy_decode(model, images, 100, 2, 0, self.device, True)
                 for idx, (pred, text_gold) in enumerate(zip(outputs[:, 1:], text_label)):
                     predict_text = ''
                     for i in range(len(pred)):

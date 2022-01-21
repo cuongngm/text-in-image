@@ -77,7 +77,7 @@ post_process:
   function: ultocr.model.recognition.postprocess,MASTERpostprocess
   
 trainer:
-  epochs: 29
+  epochs: 31
   do_validation: True
   validation_epoch: 1
   log_step_interval: 200
@@ -90,6 +90,6 @@ trainer:
   global_rank: -1
   early_stop: 10
   resume: True
-  ckpt_file: 'saved/master_30e.pth'
+  ckpt_file: 'saved/ckpt/MASTER/0119_171505/best_cp.pth'
 
 

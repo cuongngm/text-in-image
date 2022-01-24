@@ -98,6 +98,8 @@ def draw_bbox(img, result, color=(255, 0, 0), thickness=2):
     img = img.copy()
     h, w = img.shape[:2]
     for point in result:
-        point = point.astype(int)
+        # point = point.astype(int)
+        point = np.array(point).astype(int)
+        point = point.reshape((-1, 1, 2))  
         cv2.polylines(img, [point], True, color, thickness)
     return img

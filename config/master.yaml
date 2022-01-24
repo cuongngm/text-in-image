@@ -2,7 +2,7 @@ base:
   model_type: text_recognition
   algorithm: MASTER
   save_dir: saved
-  gpu_id: 0
+  gpu_id: 1
 
 dataset:
   type: 'txt'  # lmdb / txt
@@ -18,7 +18,7 @@ dataset:
     batch_size: 16
     num_workers: 4
   preprocess:
-    case_sensitive: False
+    case_sensitive: True
     to_gray: False
     transform: ultocr.loader.recognition.reg_loader,Resize
   vocab: 'dataset/vocab/keysVN.txt'
@@ -26,9 +26,9 @@ dataset:
 
 model:
   gcb:
-    in_channels: 32
+    in_channels: 3
     ratio: 0.0625
-    headers: 8
+    headers: 1
     pooling_type: 'att'
     att_scale: True
     fusion_type: 'channel_concat'
@@ -36,7 +36,6 @@ model:
     use_gcb: [False, True, True, True]
   common:
     with_encoder: False
-    tgt_vocab: 36
     d_model: 512
     nhead: 8
   encoder:
@@ -65,7 +64,7 @@ loss:
   
 optimizer:
   type: 'Adam'
-  base_lr: 0.0004
+  base_lr: 0.0001
   function: ultocr.model.optimizer,AdamDecay
 
 scheduler:
@@ -74,11 +73,11 @@ scheduler:
   gamma: 0.1
 
 post_process:
-  max_len: 128
+  max_len: 100
   function: ultocr.model.recognition.postprocess,MASTERpostprocess
   
 trainer:
-  epochs: 100
+  epochs: 31
   do_validation: True
   validation_epoch: 1
   log_step_interval: 200
@@ -90,7 +89,7 @@ trainer:
   local_rank: -1
   global_rank: -1
   early_stop: 10
-  resume: False
-  ckpt_file: checkpoint/model_best.pth
+  resume: True
+  ckpt_file: 'saved/ckpt/MASTER/0119_171505/best_cp.pth'
 
 

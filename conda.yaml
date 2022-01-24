@@ -5,8 +5,9 @@ dependencies:
         - python=3.6
         - pip
         - pip:
-                - torch==1.7.0
-                - torchvision==0.8.1
+                - torch>=1.9.0
+                - torchvision>=0.9.1
+                - pytorch-lightning==1.5.1
                 - mlflow
                 - Polygon3
                 - pyclipper

@@ -77,7 +77,8 @@ if __name__ == '__main__':
     result_name = img_name[:-4] + '_rs' + '.jpg'
     model = End2end(img_path)
     predict_time = time.time()
-    result = model.get_result()
+    result, img_rs = model.get_result()
     print('predict time:', time.time() - predict_time)
-    img = result['img']
-    cv2.imwrite(os.path.join(opt.save_path, result_name), img)
+    # img = result['img']
+    cv2.imwrite(os.path.join(opt.save_path, result_name), img_rs)
+    print(result)

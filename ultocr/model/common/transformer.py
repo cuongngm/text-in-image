@@ -35,14 +35,21 @@ def dot_product_attention(query, key, value, mask=None, dropout=None):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, nhead, d_model, dropout=0.1):
-        super().__init__()
-        assert d_model % nhead == 0
-        self.h = nhead
-        self.d_k = int(d_model / nhead)
-        self.linears = clones(nn.Linear(d_model, d_model), 4)
-        self.attention = None
-        self.dropout = nn.Dropout(dropout)
+    def __init__(self, h, d_model, dropout=0.1):
+        """
+        :param h: number of self attention head
+        :param d_model: dimension of model
+        :param dropout:
+        """
+        super(MultiHeadAttention, self).__init__()
+
+        assert d_model % h == 0
+        # requires d_v = d_k, d_q = d_k = d_v = d_m / h
+        self.d_k = int(d_model / h)
+        self.h = h
+        self.linears = clones(nn.Linear(d_model, d_model), 4)  # (q, k, v, last output layer)
+        self.attn = None
+        self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, *input):
         query = input[0]  # (N, seq_len, d_m)
@@ -64,7 +71,8 @@ class MultiHeadAttention(nn.Module):
 
         # apply attention on all the projected vectors in batch.
         # (N, h, seq_len, d_v), (N, h, seq_len, seq_len)
-        x, self.attention = dot_product_attention(query, key, value, mask=mask, dropout=self.dropout)
+        x, self.attn = dot_product_attention(query, key, value, mask=mask,
+                                             dropout=self.dropout)
 
         # "Concat" using a view and apply a final linear.
         # (N, seq_len, d_m)
@@ -80,15 +88,11 @@ class FeedForward(nn.Module):
         super().__init__()
         self.w_1 = nn.Linear(d_model, ff_dim)
         self.w_2 = nn.Linear(ff_dim, d_model)
-        self.dropout = nn.Dropout(dropout)
-        self.relu = nn.ReLU(inplace=True)
+        self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, x):
-        x = self.w_1(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-        x = self.w_2(x)
-        return x
+    def forward(self, *input):
+        x = input[0]
+        return self.w_2(self.dropout(F.relu(self.w_1(x))))
 
 
 class Embeddings(nn.Module):

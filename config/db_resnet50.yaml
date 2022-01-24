@@ -2,7 +2,7 @@ base:
   model_type: text_detection 
   algorithm: DBnet
   save_dir: saved
-  gpu_id: 0
+  gpu_id: 1
 
 dataset:
   type: 'multi_point'
@@ -41,7 +41,7 @@ loss:
   bce_scale: 10
 
 optimizer:
-  base_lr: 0.007
+  base_lr: 0.002
   weight_decay: 0.0001
   momentum: 0.9
   function: ultocr.model.optimizer,SGDDecay
@@ -53,18 +53,14 @@ post_process:
   thresh: 0.25
   box_thresh: 0.5
   max_candidates: 1000
-  is_poly: False
+  is_poly: True
   unclip_ratio: 1.5
   min_size: 3
   function: ultocr.model.detection.postprocess,DBPostProcess
 
-metric:
-  thresh_text_score: 0.25
-  is_output_polygon: False
-
 trainer:
   resume: False
-  ckpt_file: checkpoint/model_best.pth
+  ckpt_file: 'saved/ckpt/DBnet/0113_115109/best_cp.pth'
   num_epoch: 100
   sync_batch_norm: True
   local_world_size: 1

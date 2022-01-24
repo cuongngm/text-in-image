@@ -4,7 +4,7 @@ import torch.nn as nn
 from copy import deepcopy
 from ultocr.utils.utils_function import create_module
 from ultocr.loader.recognition.translate import LabelConverter
-from ultocr.model.common.transformer import EncoderLayer, DecoderLayer, Encoder, Decoder
+from ultocr.model.common.transformer import EncoderLayer, DecoderLayer, Encoder, Decoder, Embeddings
 
 
 class Generator(nn.Module):
@@ -78,9 +78,9 @@ class MASTER(nn.Module):
                                        dropout=config['model']['decoder']['dropout']),
                           config['model']['decoder']['num_layer'])
         self.generator = create_module(config['functional']['generator'])(config['model']['common']['d_model'],
-                                                                          config['model']['common']['tgt_vocab'])
+                                                                          tgt_vocab)
         src_embed = nn.Sequential(conv_embedding_gc, deepcopy(encoder_position))
-        tgt_embed = nn.Sequential(embedding, deepcopy(decoder_position))
+        tgt_embed = nn.Sequential(Embeddings(config['model']['common']['d_model'], tgt_vocab), deepcopy(decoder_position))
         padding = self.convert.PAD
         self.src_embed = src_embed
         self.tgt_embed = tgt_embed

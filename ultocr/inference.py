@@ -13,6 +13,8 @@ from ultocr.utils.det_utils import four_point_transform, sort_by_line, test_prep
 from ultocr.loader.recognition.translate import LabelConverter
 from ultocr.loader.recognition.reg_loader import Resize
 from ultocr.model.recognition.postprocess import greedy_decode_with_probability
+import mlflow
+from mlflow.models.signature import infer_signature
 
 
 class Detection:
@@ -84,20 +86,27 @@ class Recognition:
         self.batch = 16
         self.convert = LabelConverter(classes=cfg['dataset']['vocab'],
                                             max_length=100, ignore_over=False)
+        """
         model = create_module(cfg['model']['function'])(cfg)
         state_dict = torch.load('saved/ckpt/MASTER/0118_152255/best_cp.pth', map_location=self.device)
         # state_dict = torch.load('saved/master_30e.pth', map_location=self.device)
         model.load_state_dict(state_dict['state_dict'])
         self.model = model.to(self.device)
         self.model.eval()
+        """
+        model = mlflow.pytorch.load_model(model_uri='abc')
+        self.model = model.to(self.device)
+        self.model.eval()
 
     def recognize(self, list_img):
+        # new_list_img = [Image.fromarray(img) for img in list_img]
         text_dataset = TextInference(list_img, transform=Resize(self.img_w, self.img_h, gray_format=False))
         text_loader = DataLoader(text_dataset, batch_size=self.batch, shuffle=False, num_workers=4, drop_last=False)
         pred_results = []
         for step_idx, data_item in enumerate(text_loader):
             # print('data_item', data_item.size())
             images = data_item
+           
             with torch.no_grad():
                 images = images.to(self.device)
                 # if hasattr(self.model, 'module'):
@@ -106,6 +115,7 @@ class Recognition:
                                                                 self.convert.SOS,
                                                                 padding_symbol=self.convert.PAD,
                                                                 device=self.device, padding=True)
+            
             for index, (pred, prob) in enumerate(zip(outputs[:, 1:], probs)):
                 pred_text = ''
                 pred_score_list = []
@@ -119,6 +129,7 @@ class Recognition:
                     decoder_char = self.convert.decode(pred[i])
                     pred_text += decoder_char
                     pred_score_list.append(prob[i])
+                
                 pred_score = sum(pred_score_list) / len(pred_score_list)
                 # pred_item = {'result': pred_text,
                 #              'prob': pred_score}
@@ -127,6 +138,8 @@ class Recognition:
                 # else:
                 #     pred_results.append('')
         return pred_results
+        # signature = infer_signature(model_input=images.detach().cpu().numpy(), model_output=outputs.detach().cpu().numpy())
+        # mlflow.pytorch.save_model(self.model, 'abc', signature=signature)
 
 
 class End2end:

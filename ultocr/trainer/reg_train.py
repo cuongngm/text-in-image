@@ -19,6 +19,7 @@ from ultocr.model.recognition.postprocess import greedy_decode
 import mlflow
 from mlflow.tracking import MlflowClient
 from mlflow.entities.model_registry.model_version_status import ModelVersionStatus
+from mlflow.models.signature import infer_signature
 
 
 class TrainerReg:
@@ -60,6 +61,7 @@ class TrainerReg:
             checkpoint = torch.load(config['trainer']['ckpt_file'], map_location=self.device)
             self.start_epoch = checkpoint['epoch']
             state_dict = checkpoint['state_dict']
+            """
             new_state_dict = OrderedDict()
             for k, v in state_dict.items():
                 if 'module' not in k:
@@ -67,7 +69,8 @@ class TrainerReg:
                 else:
                     k = k.replace('features.module.', 'module.features.')
                 new_state_dict[k] = v
-            self.model.load_state_dict(new_state_dict)
+            """
+            self.model.load_state_dict(state_dict)
             # self.optimizer.load_state_dict(checkpoint['optimizer'])
 
         else:
@@ -83,12 +86,14 @@ class TrainerReg:
         self.early_stop = config['trainer']['early_stop']  
 
     def train(self):
-        client = MlflowClient()
+        # client = MlflowClient()
         artifact_path = 'master-model'
-        mlflow.set_tracking_uri("sqlite:///mlruns.db")
+        # mlflow.set_tracking_uri("sqlite:///mlruns.db")
      
         with mlflow.start_run() as run:
             run_num = run.info.run_id
+            mlflow.log_param("Experiment name", run_num)
+        
         if self.distributed:
             dist.barrier()  # syncing machines before training
         not_improved_count = 0
@@ -105,7 +110,7 @@ class TrainerReg:
                           f"Word_acc: {val_metric_res_dict['word_acc']:.6f}" \
                           f"Word_acc_case_ins: {val_metric_res_dict['word_acc_case_insensitive']:.6f}" \
                           f"Edit_distance_acc: {val_metric_res_dict['edit_distance_acc']:.6f}"
-            
+                
                 mlflow.log_metric('word_acc', val_metric_res_dict['word_acc'])
                 mlflow.log_metric('word_acc_case_ins', val_metric_res_dict['word_acc_case_insensitive'])
                 mlflow.log_metric('edit_distance_acc', val_metric_res_dict['edit_distance_acc'])
@@ -134,12 +139,12 @@ class TrainerReg:
     }, self.save_model_dir, 'last_cp.pth')
         self.logger.info('Saved model') if self.local_check else None
        
-        model_uri = "runs:/{run_id}/{artifact_path}".format(run_id=run_num, artifact_path=artifact_path)
-        print(model_uri)
-        mlflow.pytorch.log_model(self.model, artifact_path)
-        mlflow.pytorch.save_model(self.model, artifact_path)
+        # model_uri = "runs:/{run_id}/{artifact_path}".format(run_id=run_num, artifact_path=artifact_path)
+        # print(model_uri)
+        # mlflow.pytorch.log_model(self.model, artifact_path)
+        # mlflow.pytorch.save_model(self.model, artifact_path)
         # mlflow.pytorch.save_state_dict(self.model.state_dict(), artifact_path)
-        mlflow.register_model(model_uri=model_uri, name=artifact_path)
+        # mlflow.register_model(model_uri=model_uri, name=artifact_path)
         """
         # Grab this latest model version
         model_version_infos = client.search_model_versions("name = '%s'" % artifact_path)
@@ -230,6 +235,7 @@ class TrainerReg:
                     predict_text += decoded_char
                 # print('gt:', text_gold)
                 # print('pred:', predict_text)
+                
                 ref = len(text_gold)
                 edit_distance = distance.levenshtein(text_gold, predict_text)
                 total_distance_ref += ref

@@ -100,7 +100,7 @@ class DetLoader(Dataset):
             img, thresh_map, thresh_mask = self.MBM.process(img, polys, ignore)
             
             img = Image.fromarray(img).convert('RGB')
-            # img = transforms.ColorJitter(brightness=32.0/255, saturation=0.5)(img)
+            img = transforms.ColorJitter(brightness=32.0/255, saturation=0.5)(img)
             img = self.aug.normalize_img(img)
 
             gt = torch.from_numpy(gt).float()

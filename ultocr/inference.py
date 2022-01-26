@@ -91,7 +91,6 @@ class Recognition:
         
         model = create_module(cfg['model']['function'])(cfg)
         state_dict = torch.load('saved/ckpt/MASTER/0125_180539/model_best.pth', map_location=self.device)['model_state_dict']
-        # state_dict = change_state_dict(state_dict)
         model.load_state_dict(state_dict)
         # model = mlflow.pytorch.load_model(model_uri='abc')
         self.model = model.to(self.device)
@@ -136,9 +135,12 @@ class Recognition:
                 pred_results.append(pred_text)
                 # else:
                 #     pred_results.append('')
+        """
+        signature = infer_signature(model_input=images.detach().cpu().numpy(),
+                                    model_output=outputs.detach().cpu().numpy())
+        mlflow.pytorch.save_model(self.model, 'abc', signature=signature)
+        """
         return pred_results
-        # signature = infer_signature(model_input=images.detach().cpu().numpy(), model_output=outputs.detach().cpu().numpy())
-        # mlflow.pytorch.save_model(self.model, 'abc', signature=signature)
 
 
 class End2end:
@@ -168,6 +170,4 @@ class End2end:
             img_pil = Image.fromarray(img_crop.astype('uint8'), 'RGB')
             all_img_pil.append(img_pil)
         result = self.recognition.recognize(all_img_pil)
-    
         return result, img_rs
-

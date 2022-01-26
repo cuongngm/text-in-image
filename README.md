@@ -7,7 +7,6 @@ model = End2end(img_path='./', det_model='DB', reg_model='MASTER')
 result = model.get_result()
 ```
 
-
 ### Install
 ```bash
 git clone https://github.com/cuongngm/text-in-image
@@ -30,11 +29,16 @@ Multi gpu training:
 # assume we have 2 gpu
 python -m torch.distributed.launch --nnodes=1 --node_rank=0 --nproc_per_node=2 --master_addr=127.0.0.1 --master_post=5555 train.py --config config/db_resnet50.yaml
 ```
+
+### Inference
+```bash
+python demo.py --image_path saved/test/1.jpg --save_path saved/test
+```
+
 ### Todo
 - [x] Multi gpu training
-- [ ] Release model zoo
-- [ ] Pytorch lightning
-- [ ] Tracking experiments with Mlflow
+- [x] Release model zoo
+- [x] Tracking experiments with Mlflow
 - [ ] Model serving with Mlflow
 - [ ] Key information extraction
 - [ ] Image orientation classifier

@@ -2,3 +2,5 @@ Polygon3
 pyclipper
 imgaug
 distance
+mlflow
+tqdm

@@ -15,7 +15,7 @@ dataset:
   test_load:
     test_img_dir: 'dataset/hoadon_ocr'
     test_label_dir: 'dataset/hoadon_ocr/test.txt'
-    batch_size: 16
+    batch_size: 4
     num_workers: 4
   preprocess:
     case_sensitive: True
@@ -90,6 +90,6 @@ trainer:
   global_rank: -1
   early_stop: 10
   resume: True
-  ckpt_file: 'saved/ckpt/MASTER/0119_171505/best_cp.pth'
+  ckpt_file: 'saved/master_30e.pth'
 
 

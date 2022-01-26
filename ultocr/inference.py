@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from ultocr.utils.utils_function import create_module
+from ultocr.utils.utils_function import create_module, change_state_dict
 from ultocr.loader.recognition.reg_loader import TextInference
 from ultocr.utils.det_utils import four_point_transform, sort_by_line, test_preprocess, draw_bbox
 from ultocr.loader.recognition.translate import LabelConverter
@@ -21,7 +21,9 @@ class Detection:
     def __init__(self, cfg):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model = create_module(cfg['model']['function'])(cfg)
-        model.load_state_dict(torch.load('saved/ckpt/DBnet/0118_155141/best_hmean.pth', map_location=self.device)['state_dict'])
+        state_dict = torch.load('saved/ckpt/DBnet/0125_175529/model_best.pth', map_location=self.device)['model_state_dict']
+        # state_dict = change_state_dict(state_dict)
+        model.load_state_dict(state_dict)
         self.model = model.to(self.device)
         self.model.eval()
         self.seg_obj = create_module(cfg['post_process']['function'])(cfg)
@@ -86,17 +88,14 @@ class Recognition:
         self.batch = 16
         self.convert = LabelConverter(classes=cfg['dataset']['vocab'],
                                             max_length=100, ignore_over=False)
-        """
+        
         model = create_module(cfg['model']['function'])(cfg)
-        state_dict = torch.load('saved/ckpt/MASTER/0118_152255/best_cp.pth', map_location=self.device)
-        # state_dict = torch.load('saved/master_30e.pth', map_location=self.device)
-        model.load_state_dict(state_dict['state_dict'])
+        state_dict = torch.load('saved/ckpt/MASTER/0125_180539/model_best.pth', map_location=self.device)['model_state_dict']
+        # state_dict = change_state_dict(state_dict)
+        model.load_state_dict(state_dict)
+        # model = mlflow.pytorch.load_model(model_uri='abc')
         self.model = model.to(self.device)
-        self.model.eval()
-        """
-        model = mlflow.pytorch.load_model(model_uri='abc')
-        self.model = model.to(self.device)
-        self.model.eval()
+        self.model.eval()  
 
     def recognize(self, list_img):
         # new_list_img = [Image.fromarray(img) for img in list_img]

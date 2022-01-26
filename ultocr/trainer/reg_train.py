@@ -2,9 +2,11 @@ from collections import OrderedDict
 import os
 import shutil
 import argparse
+import shutil
 import random
 import yaml
 import numpy as np
+from tqdm import tqdm
 import distance
 import torch
 import torch.nn.functional as f
@@ -57,21 +59,7 @@ class TrainerReg:
         # resume from checkpoint
         if config['trainer']['resume']:
             assert os.path.isfile(config['trainer']['ckpt_file']), 'checkpoint path is not correct'
-            logger.info('Resume from checkpoint: {}'.format(config['trainer']['ckpt_file'])) if self.local_check else None
-            checkpoint = torch.load(config['trainer']['ckpt_file'], map_location=self.device)
-            self.start_epoch = checkpoint['epoch']
-            state_dict = checkpoint['state_dict']
-            """
-            new_state_dict = OrderedDict()
-            for k, v in state_dict.items():
-                if 'module' not in k:
-                    k = 'module.' + k
-                else:
-                    k = k.replace('features.module.', 'module.features.')
-                new_state_dict[k] = v
-            """
-            self.model.load_state_dict(state_dict)
-            # self.optimizer.load_state_dict(checkpoint['optimizer'])
+            self._resume_checkpoint(config['trainer']['ckpt_file'])
 
         else:
             logger.info('Training from scratch...') if self.local_check else None
@@ -87,12 +75,12 @@ class TrainerReg:
 
     def train(self):
         # client = MlflowClient()
-        artifact_path = 'master-model'
+        # artifact_path = 'master-model'
         # mlflow.set_tracking_uri("sqlite:///mlruns.db")
      
-        with mlflow.start_run() as run:
-            run_num = run.info.run_id
-            mlflow.log_param("Experiment name", run_num)
+        # with mlflow.start_run() as run:
+        #     run_num = run.info.run_id
+        #     mlflow.log_param("Experiment name", run_num)
         
         if self.distributed:
             dist.barrier()  # syncing machines before training
@@ -111,32 +99,29 @@ class TrainerReg:
                           f"Word_acc_case_ins: {val_metric_res_dict['word_acc_case_insensitive']:.6f}" \
                           f"Edit_distance_acc: {val_metric_res_dict['edit_distance_acc']:.6f}"
                 
-                mlflow.log_metric('word_acc', val_metric_res_dict['word_acc'])
-                mlflow.log_metric('word_acc_case_ins', val_metric_res_dict['word_acc_case_insensitive'])
-                mlflow.log_metric('edit_distance_acc', val_metric_res_dict['edit_distance_acc'])
+                # mlflow.log_metric('word_acc', val_metric_res_dict['word_acc'])
+                # mlflow.log_metric('word_acc_case_ins', val_metric_res_dict['word_acc_case_insensitive'])
+                # mlflow.log_metric('edit_distance_acc', val_metric_res_dict['edit_distance_acc'])
             else:
                 val_res = ''
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
             self.logger.info('[Epoch end] Epoch:[{}/{}] Loss: {:.6f} LR: {:.8f}'
                              .format(epoch, self.epochs, result_dict['loss'], self.get_lr()) + val_res) if self.local_check else None
-            mlflow.log_metric('loss', result_dict['loss'])
+            # mlflow.log_metric('loss', result_dict['loss'])
+           
             best = False
             if self.do_validation and epoch % self.validation_epoch == 0:
+                
                 best, not_improved_count = self.is_best_monitor_metric(best, not_improved_count, val_metric_res_dict)
                 if not_improved_count > self.early_stop:
                     self.logger.info('Validation performance didn\'t improve for {} epochs.'
                                      'Training stops'.format(self.early_stop)) if self.local_check else None
                     break
                 if best:
-                    save_checkpoint({
-                    'epoch': epoch,
-                    'state_dict': self.model.state_dict()
-                }, self.save_model_dir, 'best_cp.pth')
-        save_checkpoint({
-        'epoch': self.epochs,
-        'state_dict': self.model.state_dict()
-    }, self.save_model_dir, 'last_cp.pth')
+                    self._save_checkpoint(epoch, save_best=True)
+                else:
+                    self._save_checkpoint(epoch, save_best=False)
         self.logger.info('Saved model') if self.local_check else None
        
         # model_uri = "runs:/{run_id}/{artifact_path}".format(run_id=run_num, artifact_path=artifact_path)
@@ -201,7 +186,7 @@ class TrainerReg:
     def valid_epoch(self, epoch):
         self.model.eval()
         self.val_metrics.reset()
-        for step_idx, input_data_item in enumerate(self.test_loader):
+        for step_idx, input_data_item in tqdm(enumerate(self.test_loader)):
             batch_size = input_data_item[0].size(0)
             images = input_data_item[0]
          
@@ -350,3 +335,90 @@ class TrainerReg:
                 device = 'cpu'
             device = torch.device(device)
             return device, list_ids
+
+        
+    def _save_checkpoint(self, epoch, save_best=False, step_idx=None):
+        '''
+        Saving checkpoints
+        :param epoch:  current epoch number
+        :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
+        :return:
+        '''
+        if hasattr(self.model, 'module'):
+            arch_name = type(self.model.module).__name__
+            model_state_dict = self.model.module.state_dict()
+        else:
+            arch_name = type(self.model).__name__
+            model_state_dict = self.model.state_dict()
+        state = {
+            'arch': arch_name,
+            'epoch': epoch,
+            'model_state_dict': model_state_dict,
+        }
+        if step_idx is None:
+            filename = str(self.save_model_dir / 'checkpoint-epoch{}.pth'.format(epoch))
+        else:
+            filename = str(self.save_model_dir / 'checkpoint-epoch{}-step{}.pth'.format(epoch, step_idx))
+        torch.save(state, filename)
+        self.logger.info("Saving checkpoint: {} ...".format(filename)) if self.local_check else None
+
+        if save_best:
+            best_path = str(self.save_model_dir / 'model_best.pth')
+            shutil.copyfile(filename, best_path)
+            self.logger.info(
+                f"Saving current best (at {epoch} epoch): model_best.pth") if self.local_check else None
+
+        # if save_best:
+        #     best_path = str(self.checkpoint_dir / 'model_best.pth')
+        #     torch.save(state, best_path)
+        #     self.logger_info(
+        #         f"Saving current best: model_best.pth Best {self.monitor_metric}: {self.monitor_best:.6f}.")
+        # else:
+        #     filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
+        #     torch.save(state, filename)
+        #     self.logger_info("Saving checkpoint: {} ...".format(filename))
+
+    def _resume_checkpoint(self, resume_path):
+        '''
+        Resume from saved checkpoints
+        :param resume_path: Checkpoint path to be resumed
+        :return:
+        '''
+        resume_path = str(resume_path)
+        self.logger.info("Loading checkpoint: {} ...".format(resume_path)) if self.local_check else None
+        # map_location = {'cuda:%d' % 0: 'cuda:%d' % self.config['local_rank']}
+        checkpoint = torch.load(resume_path, map_location=self.device)
+        self.start_epoch = checkpoint['epoch'] + 1
+        # self.monitor_best = checkpoint['monitor_best']
+
+        # load architecture params from checkpoint.
+        # if checkpoint['config']['model_arch'] != self.config['model_arch']:  # TODO verify adapt and adv arch
+        #     self.logger_warning("Warning: Architecture configuration given in config file is different from that of "
+        #                         "checkpoint. This may yield an exception while state_dict is being loaded.")
+        # self.model.load_state_dict(checkpoint['state_dict'])
+        state_dict = checkpoint['model_state_dict']
+        if self.distributed:
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                if 'module' not in k:
+                    k = 'module.' + k
+                else:
+                    k = k.replace('features.module.', 'module.features.')
+                new_state_dict[k] = v
+            self.model.load_state_dict(new_state_dict)
+        else:
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+
+        # load optimizer state from checkpoint only when optimizer type is not changed.
+        # if not self.finetune:  # resume mode will load optimizer state and continue train
+        #     if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
+        #         self.logger_warning(
+        #             "Warning: Optimizer type given in config file is different from that of checkpoint. "
+        #             "Optimizer parameters not being resumed.")
+        #     else:
+        #         self.optimizer.load_state_dict(checkpoint['optimizer'])
+
+        # if self.finetune:
+        #     self.logger_info("Checkpoint loaded. Finetune training from epoch {}".format(self.start_epoch))
+        # else:
+        self.logger.info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch)) if self.local_check else None

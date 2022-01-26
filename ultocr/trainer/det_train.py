@@ -1,6 +1,8 @@
 import os
 import numpy as np
+import shutil
 from tqdm import tqdm
+from collections import OrderedDict
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -44,10 +46,11 @@ class TrainerDet:
             
         if config['trainer']['resume']:
             assert os.path.isfile(config['trainer']['ckpt_file']), 'checkpoint path is not correct'
-            logger.info('Resume from checkpoint: {}'.format(config['trainer']['ckpt_file'])) if self.local_check else None
-            checkpoint = torch.load(config['trainer']['ckpt_file'])
-            self.start_epoch = checkpoint['epoch']
-            self.model.load_state_dict(checkpoint['state_dict'])
+            self._resume_checkpoint(config['trainer']['ckpt_file'])
+            # logger.info('Resume from checkpoint: {}'.format(config['trainer']['ckpt_file'])) if self.local_check else None
+            # checkpoint = torch.load(config['trainer']['ckpt_file'])
+            # self.start_epoch = checkpoint['epoch']
+            # self.model.load_state_dict(checkpoint['state_dict'])
             # self.optimizer.load_state_dict(checkpoint['optimizer'])
         else:
             logger.info('Training from scratch...') if self.local_check else None
@@ -64,30 +67,18 @@ class TrainerDet:
             train_loss = self.train_epoch(epoch)
             train_loss = train_loss.item()
             self.logger.info('Train loss: {}'.format(train_loss)) if self.local_check else None
-            mlflow.log_metric('Train loss', train_loss)
+            # mlflow.log_metric('Train loss', train_loss)
             recall, precision, hmean = self.test_epoch()
-            mlflow.log_metric('Recall', recall)
-            mlflow.log_metric('Precision', precision)
-            mlflow.log_metric('Hmean', hmean)
+            # mlflow.log_metric('Recall', recall)
+            # mlflow.log_metric('Precision', precision)
+            # mlflow.log_metric('Hmean', hmean)
             
             self.logger.info('Test: Recall: {} - Precision:{} - Hmean: {}'.format(recall, precision, hmean)) if self.local_check else None
             if hmean > best_hmean:
                 best_hmean = hmean
-                save_checkpoint({
-                    'epoch': epoch,
-                    'state_dict': self.model.state_dict()
-                }, self.save_model_dir, 'best_hmean.pth')
-            if train_loss < best_train_loss:
-                best_train_loss = train_loss
-                save_checkpoint({
-                    'epoch': epoch,
-                    'state_dict': self.model.state_dict()
-                }, self.save_model_dir, 'best_cp.pth')
-        
-        save_checkpoint({
-            'epoch': self.epochs,
-            'state_dict': self.model.state_dict()
-        }, self.save_model_dir, 'last_cp.pth')
+                self._save_checkpoint(epoch, save_best=True)
+            else:
+                self._save_checkpoint(epoch, save_best=False)
         self.logger.info('Saved model') if self.local_check else None
 
     def train_epoch(self, epoch):
@@ -112,8 +103,8 @@ class TrainerDet:
             train_loss += total_loss
             acc = score_shrink_map['Mean Acc']
             iou_shrink_map = score_shrink_map['Mean IoU']
-            mlflow.log_param("Batch size", batch['img'].size(0))
-            mlflow.log_param("Learning rate", lr)
+            # mlflow.log_param("Batch size", batch['img'].size(0))
+            # mlflow.log_param("Learning rate", lr)
             if idx % self.config['trainer']['log_iter'] == 0:
                 self.logger.info('[{}-{}] - lr:{} - total-loss:{} - acc:{} - iou:{}'
                                  .format(epoch, idx, lr, total_loss, acc, iou_shrink_map)) if self.local_check else None
@@ -175,3 +166,88 @@ class TrainerDet:
             device = torch.device(device)
             return device, list_ids
 
+    def _save_checkpoint(self, epoch, save_best=False, step_idx=None):
+        '''
+        Saving checkpoints
+        :param epoch:  current epoch number
+        :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
+        :return:
+        '''
+        if hasattr(self.model, 'module'):
+            arch_name = type(self.model.module).__name__
+            model_state_dict = self.model.module.state_dict()
+        else:
+            arch_name = type(self.model).__name__
+            model_state_dict = self.model.state_dict()
+        state = {
+            'arch': arch_name,
+            'epoch': epoch,
+            'model_state_dict': model_state_dict,
+        }
+        if step_idx is None:
+            filename = str(self.save_model_dir / 'checkpoint-epoch{}.pth'.format(epoch))
+        else:
+            filename = str(self.save_model_dir / 'checkpoint-epoch{}-step{}.pth'.format(epoch, step_idx))
+        torch.save(state, filename)
+        self.logger.info("Saving checkpoint: {} ...".format(filename)) if self.local_check else None
+
+        if save_best:
+            best_path = str(self.save_model_dir / 'model_best.pth')
+            shutil.copyfile(filename, best_path)
+            self.logger.info(
+                f"Saving current best (at {epoch} epoch): model_best.pth") if self.local_check else None
+
+        # if save_best:
+        #     best_path = str(self.checkpoint_dir / 'model_best.pth')
+        #     torch.save(state, best_path)
+        #     self.logger_info(
+        #         f"Saving current best: model_best.pth Best {self.monitor_metric}: {self.monitor_best:.6f}.")
+        # else:
+        #     filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
+        #     torch.save(state, filename)
+        #     self.logger_info("Saving checkpoint: {} ...".format(filename))
+
+    def _resume_checkpoint(self, resume_path):
+        '''
+        Resume from saved checkpoints
+        :param resume_path: Checkpoint path to be resumed
+        :return:
+        '''
+        resume_path = str(resume_path)
+        self.logger.info("Loading checkpoint: {} ...".format(resume_path)) if self.local_check else None
+        # map_location = {'cuda:%d' % 0: 'cuda:%d' % self.config['local_rank']}
+        checkpoint = torch.load(resume_path, map_location=self.device)
+        self.start_epoch = checkpoint['epoch'] + 1
+        # self.monitor_best = checkpoint['monitor_best']
+
+        # load architecture params from checkpoint.
+        # if checkpoint['config']['model_arch'] != self.config['model_arch']:  # TODO verify adapt and adv arch
+        #     self.logger_warning("Warning: Architecture configuration given in config file is different from that of "
+        #                         "checkpoint. This may yield an exception while state_dict is being loaded.")
+        # self.model.load_state_dict(checkpoint['state_dict'])
+        # self.model.load_state_dict(checkpoint['model_state_dict'])
+        state_dict = checkpoint['model_state_dict']
+        if self.distributed:
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                if 'module' not in k:
+                    k = 'module.' + k
+                else:
+                    k = k.replace('features.module.', 'module.features.')
+                new_state_dict[k] = v
+            self.model.load_state_dict(new_state_dict)
+        else:
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+        # load optimizer state from checkpoint only when optimizer type is not changed.
+        # if not self.finetune:  # resume mode will load optimizer state and continue train
+        #     if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
+        #         self.logger_warning(
+        #             "Warning: Optimizer type given in config file is different from that of checkpoint. "
+        #             "Optimizer parameters not being resumed.")
+        #     else:
+        #         self.optimizer.load_state_dict(checkpoint['optimizer'])
+
+        # if self.finetune:
+        #     self.logger_info("Checkpoint loaded. Finetune training from epoch {}".format(self.start_epoch))
+        # else:
+        self.logger.info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch)) if self.local_check else None

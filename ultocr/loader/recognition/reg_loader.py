@@ -1,5 +1,4 @@
 import os
-import cv2
 import numpy as np
 from PIL import Image
 import torch
@@ -36,7 +35,7 @@ class RegLoader(Dataset):
                 line = line.strip().split('\t')
                 image_name = line[0]
                 label = '\n'.join(line[1:])
-                if len(label) > self.max_length and self.max_length != -1:
+                if (len(label) > self.max_length) and (self.max_length != -1):
                     continue
                 image_name = os.path.join(img_root, image_name)
                 image_names.append(image_name)
@@ -59,14 +58,12 @@ class RegLoader(Dataset):
 
         if self.transform is not None:
             img, width_ratio = self.transform(img)
-            
-       
+
         label = self.all_labels[idx]
 
         if not self.case_sensitive:
             label = label.lower()
         return img, label
-
 
 
 class TextInference(Dataset):
@@ -107,7 +104,8 @@ class DistCollateFn:
             return dict(batch_size=batch_size,
                         images=image_batch_tensor,
                         file_names=file_names)
-    
+
+
 class Resize(object):
     def __init__(self, new_w, new_h, interpolation=Image.BILINEAR, gray_format=True):
         self.w, self.h = new_w, new_h

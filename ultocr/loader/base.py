@@ -1,8 +1,64 @@
-import os
-import json
 import cv2
+import os
+import math
+import json
 import numpy as np
 from tqdm import tqdm
+from random import shuffle
+import torch.distributed as dist
+from torch.utils.data.sampler import Sampler
+
+
+class DistValSampler(Sampler):
+    # DistValSampler distributes batches equally (based on batch size) to every gpu (even if there aren't enough samples)
+    # This instance is used as batch_sampler args of validation dtataloader,
+    # to guarantee every gpu validate different samples simultaneously
+    # WARNING: Some baches will contain an empty array to signify there aren't enough samples
+    # distributed=False - same validation happens on every single gpu
+    def __init__(self, indices, batch_size, distributed=True):
+        self.indices = indices
+        self.batch_size = batch_size
+        if distributed:
+            self.world_size = dist.get_world_size()
+            self.global_rank = dist.get_rank()
+        else:
+            self.global_rank = 0
+            self.world_size = 1
+
+        # expected number of batches per process. Need this so each distributed gpu validates on same number of batches.
+        # even if there isn't enough data to go around
+        self.expected_num_steps = math.ceil(len(self.indices) / self.world_size / self.batch_size)
+
+        # num_samples = total samples / world_size. This is what we distribute to each gpu
+        self.num_samples = self.expected_num_steps * self.batch_size
+
+    def __iter__(self):
+        current_rank_offset = self.num_samples * self.global_rank
+        current_sampled_indices = self.indices[
+                                  current_rank_offset:min(current_rank_offset + self.num_samples, len(self.indices))]
+
+        for step in range(self.expected_num_steps):
+            step_offset = step * self.batch_size
+            # yield sampled_indices[offset:offset + self.batch_size]
+            yield current_sampled_indices[step_offset:min(step_offset + self.batch_size, len(current_sampled_indices))]
+
+    def __len__(self):
+        return self.expected_num_steps
+
+    def set_epoch(self, epoch):
+        return
+    
+    
+def crop_poly(img, points):
+    h, w = img.shape[:2]
+    mask = np.zeros((h, w), dtype=np.uint8)
+    points = np.array(points)
+    points = points.reshape(1, -1, 2)
+    cv2.fillPoly(mask, points, (255))
+    res = cv2.bitwise_and(img, img, mask=mask)
+    rect = cv2.boundingRect(points)
+    cropped = res[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]]
+    return cropped
 
 
 def labelme_to_det_format(json_dir, box_dir):
@@ -103,6 +159,6 @@ def crop_img(img_dir, box_dir, save_dir):
 
 
 if __name__ == '__main__':
-    # labelme_to_det_format(json_dir='../dataset/layoutlm/json', box_dir='../dataset/layoutlm/box')
-    crop_img(img_dir='../../../dataset/layoutlm/img', box_dir='../../../dataset/layoutlm/box',
-             save_dir='../../../dataset/layoutlm/crop_img')
+    labelme_to_det_format(json_dir='../../../dataset/CDP/json', box_dir='../../../dataset/CDP/box')
+    # crop_img(img_dir='../../../dataset/layoutlm/img', box_dir='../../../dataset/layoutlm/box',
+    #          save_dir='../../../dataset/layoutlm/crop_img')

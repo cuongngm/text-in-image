@@ -1,19 +1,11 @@
 from collections import OrderedDict
 import os
 import shutil
-import argparse
-import shutil
-import random
-import yaml
-import numpy as np
 from tqdm import tqdm
 import distance
 import torch
-import torch.nn.functional as f
 import torch.distributed as dist
-from torch.utils.data import DataLoader, DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
-from ultocr.loader.recognition.reg_loader import DistCollateFn
 from ultocr.loader.recognition.translate import LabelConverter
 from ultocr.metrics.reg_metrics import AverageMetricTracker
 from ultocr.utils.utils_function import create_module, save_checkpoint
@@ -130,18 +122,6 @@ class TrainerReg:
         # mlflow.pytorch.save_model(self.model, artifact_path)
         # mlflow.pytorch.save_state_dict(self.model.state_dict(), artifact_path)
         # mlflow.register_model(model_uri=model_uri, name=artifact_path)
-        """
-        # Grab this latest model version
-        model_version_infos = client.search_model_versions("name = '%s'" % artifact_path)
-        new_model_version = max([model_version_info.version for model_version_info in model_version_infos])
-
-        # Add a description
-        client.update_model_version(
-          name=artifact_path,
-          version=new_model_version,
-          description="Random forest scikit-learn model with 100 decision trees."
-        )
-        """
     
     def train_epoch(self, epoch):
         self.model.train()
@@ -335,7 +315,6 @@ class TrainerReg:
                 device = 'cpu'
             device = torch.device(device)
             return device, list_ids
-
         
     def _save_checkpoint(self, epoch, save_best=False, step_idx=None):
         '''
@@ -368,16 +347,6 @@ class TrainerReg:
             self.logger.info(
                 f"Saving current best (at {epoch} epoch): model_best.pth") if self.local_check else None
 
-        # if save_best:
-        #     best_path = str(self.checkpoint_dir / 'model_best.pth')
-        #     torch.save(state, best_path)
-        #     self.logger_info(
-        #         f"Saving current best: model_best.pth Best {self.monitor_metric}: {self.monitor_best:.6f}.")
-        # else:
-        #     filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
-        #     torch.save(state, filename)
-        #     self.logger_info("Saving checkpoint: {} ...".format(filename))
-
     def _resume_checkpoint(self, resume_path):
         '''
         Resume from saved checkpoints
@@ -391,11 +360,6 @@ class TrainerReg:
         self.start_epoch = checkpoint['epoch'] + 1
         # self.monitor_best = checkpoint['monitor_best']
 
-        # load architecture params from checkpoint.
-        # if checkpoint['config']['model_arch'] != self.config['model_arch']:  # TODO verify adapt and adv arch
-        #     self.logger_warning("Warning: Architecture configuration given in config file is different from that of "
-        #                         "checkpoint. This may yield an exception while state_dict is being loaded.")
-        # self.model.load_state_dict(checkpoint['state_dict'])
         state_dict = checkpoint['model_state_dict']
         if self.distributed:
             new_state_dict = OrderedDict()
@@ -409,16 +373,4 @@ class TrainerReg:
         else:
             self.model.load_state_dict(checkpoint['model_state_dict'])
 
-        # load optimizer state from checkpoint only when optimizer type is not changed.
-        # if not self.finetune:  # resume mode will load optimizer state and continue train
-        #     if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
-        #         self.logger_warning(
-        #             "Warning: Optimizer type given in config file is different from that of checkpoint. "
-        #             "Optimizer parameters not being resumed.")
-        #     else:
-        #         self.optimizer.load_state_dict(checkpoint['optimizer'])
-
-        # if self.finetune:
-        #     self.logger_info("Checkpoint loaded. Finetune training from epoch {}".format(self.start_epoch))
-        # else:
         self.logger.info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch)) if self.local_check else None

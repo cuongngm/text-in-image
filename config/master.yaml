@@ -10,12 +10,12 @@ dataset:
   train_load:
     train_img_dir: 'dataset/hoadon_ocr'
     train_label_dir: 'dataset/hoadon_ocr/train.txt'
-    batch_size: 16
+    batch_size: 32
     num_workers: 4
   test_load:
     test_img_dir: 'dataset/hoadon_ocr'
     test_label_dir: 'dataset/hoadon_ocr/test.txt'
-    batch_size: 4
+    batch_size: 16
     num_workers: 4
   preprocess:
     case_sensitive: True
@@ -65,7 +65,7 @@ loss:
 optimizer:
   type: 'Adam'
   base_lr: 0.0001
-  function: ultocr.model.optimizer,AdamDecay
+  function: ultocr.model.lr_scheduler,AdamDecay
 
 scheduler:
   type: 'StepLR'

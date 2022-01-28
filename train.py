@@ -15,6 +15,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 from ultocr.logger.logger import setup_logging
 from ultocr.loader.base import DistValSampler
+from ultocr.loader.recognition.reg_loader import DistCollateFn
 from ultocr.utils.utils_function import create_module, str_to_bool
 from ultocr.trainer.det_train import TrainerDet
 from ultocr.trainer.reg_train import TrainerReg
@@ -29,9 +30,9 @@ def get_data_loader(cfg, logger):
     test_sampler = DistValSampler(list(range(len(test_dataset))), batch_size=cfg['dataset']['test_load']['batch_size'],
                                  distributed=cfg['trainer']['distributed'])
     train_loader = DataLoader(train_dataset, sampler=train_sampler, batch_size=cfg['dataset']['train_load']['batch_size'],
-                              shuffle=False, num_workers=cfg['dataset']['train_load']['num_workers'])
+                              collate_fn=DistCollateFn(), shuffle=False, num_workers=cfg['dataset']['train_load']['num_workers'])
     test_loader = DataLoader(test_dataset, batch_sampler=test_sampler, batch_size=1,
-                             num_workers=cfg['dataset']['test_load']['num_workers'])
+                             collate_fn=DistCollateFn(), num_workers=cfg['dataset']['test_load']['num_workers'])
     return train_loader, test_loader
 
 

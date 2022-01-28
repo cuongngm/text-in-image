@@ -128,6 +128,7 @@ class TrainerReg:
         self.train_metrics.reset()
         for step_idx, input_data_item in enumerate(self.train_loader):
             images = input_data_item[0]
+            if images is None: continue
             text_label = input_data_item[1]
             step_idx += 1
             images = images.to(self.device)
@@ -167,9 +168,9 @@ class TrainerReg:
         self.model.eval()
         self.val_metrics.reset()
         for step_idx, input_data_item in tqdm(enumerate(self.test_loader)):
-            batch_size = input_data_item[0].size(0)
             images = input_data_item[0]
-         
+            if images is None: continue
+            batch_size = images.size(0)
             text_label = input_data_item[1]
             encode_label = self.convert.encode(text_label)
             

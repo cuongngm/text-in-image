@@ -44,7 +44,7 @@ optimizer:
   base_lr: 0.002
   weight_decay: 0.0001
   momentum: 0.9
-  function: ultocr.model.optimizer,SGDDecay
+  function: ultocr.model.lr_scheduler,SGDDecay
 
 scheduler:
   factor: 0.9
@@ -59,7 +59,7 @@ post_process:
   function: ultocr.model.detection.postprocess,DBPostProcess
 
 trainer:
-  resume: True
+  resume: False
   ckpt_file: 'saved/ckpt/DBnet/0125_175529/model_best.pth'
   num_epoch: 100
   sync_batch_norm: True

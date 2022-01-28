@@ -88,22 +88,13 @@ class DistCollateFn:
     def __call__(self, batch):
         batch_size = len(batch)
         if batch_size == 0:
-            return dict(batch_size=batch_size, images=None, labels=None)
+            return None, None
 
         if self.training:
             images, labels = zip(*batch)
             image_batch_tensor = torch.stack(images, dim=0).float()
             # images Tensor: (bs, c, h, w), file_names tuple: (bs,)
-            return dict(batch_size=batch_size,
-                        images=image_batch_tensor,
-                        labels=labels)
-        else:
-            images, file_names = zip(*batch)
-            image_batch_tensor = torch.stack(images, dim=0).float()
-            # images Tensor: (bs, c, h, w), file_names tuple: (bs,)
-            return dict(batch_size=batch_size,
-                        images=image_batch_tensor,
-                        file_names=file_names)
+            return image_batch_tensor, labels
 
 
 class Resize(object):

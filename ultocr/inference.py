@@ -21,7 +21,7 @@ class Detection:
     def __init__(self, cfg):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model = create_module(cfg['model']['function'])(cfg)
-        state_dict = torch.load('saved/ckpt/DBnet/0125_175529/model_best.pth', map_location=self.device)['model_state_dict']
+        state_dict = torch.load('saved/db_pretrained.pth', map_location=self.device)['model_state_dict']
         # state_dict = change_state_dict(state_dict)
         model.load_state_dict(state_dict)
         self.model = model.to(self.device)
@@ -90,7 +90,7 @@ class Recognition:
                                             max_length=100, ignore_over=False)
         
         model = create_module(cfg['model']['function'])(cfg)
-        state_dict = torch.load('saved/ckpt/MASTER/0125_180539/model_best.pth', map_location=self.device)['model_state_dict']
+        state_dict = torch.load('saved/master_pretrained.pth', map_location=self.device)['model_state_dict']
         model.load_state_dict(state_dict)
         # model = mlflow.pytorch.load_model(model_uri='abc')
         self.model = model.to(self.device)

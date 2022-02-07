@@ -5,7 +5,7 @@ base:
   gpu_id: 1
 
 dataset:
-  type: 'multi_point'
+  type: 'txt'
   new_shape: [736, 736]
   train_load:
     train_img_dir: 'dataset/CTW1500/train/img'
@@ -60,7 +60,7 @@ post_process:
 
 trainer:
   resume: False
-  ckpt_file: 'saved/ckpt/DBnet/0125_175529/model_best.pth'
+  ckpt_file: 'saved/db_pretrained.pth'
   num_epoch: 100
   sync_batch_norm: True
   local_world_size: 1

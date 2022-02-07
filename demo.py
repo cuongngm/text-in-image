@@ -65,6 +65,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Hyper parameter')
     parser.add_argument('--image_path', type=str, default='saved/test/input/1.jpg', help='input image path')
     parser.add_argument('--save_path', type=str, default='saved/test/output/', help='save path')
+    parser.add_argument('--det_model', type=str, default='saved/db_pretrained.pth', help='dbnet weight')
+    parser.add_argument('--reg_model', type=str, default='saved/model_best.pth', help='master weight')
     args = parser.parse_args()
     return args
 

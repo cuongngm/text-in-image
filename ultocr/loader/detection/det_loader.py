@@ -14,8 +14,8 @@ class DetLoader(Dataset):
     def __init__(self, config, is_training=True):
         super().__init__()
         self.crop_shape = config['dataset']['new_shape']
-        self.dataset_type = config['dataset']['type']
-        assert self.dataset_type in ['four_point', 'multi_point'], 'data type is not correct'
+        # self.dataset_type = config['dataset']['type']
+        # assert self.dataset_type in ['four_point', 'multi_point'], 'data type is not correct'
         self.is_training = is_training
 
         if self.is_training:
@@ -44,17 +44,17 @@ class DetLoader(Dataset):
                 lines = file.readlines()
                 for line in lines:
                     poly = line.strip().strip('\ufeff').strip('\xef\xbb\xbf').split(',')
-                    if self.dataset_type == 'multi_point':
-                        # x1, y1, x2, y2, ..., xn, yn
-                        poly = list(map(int, poly))
-                        polys.append(poly)
-                        ignore.append(False)
-                    elif self.dataset_type == 'four_point':
+                    # if self.dataset_type == 'multi_point':
+                    # x1, y1, x2, y2, ..., xn, yn
+                    poly = list(map(int, poly))
+                    polys.append(poly)
+                    ignore.append(False)
+                    # elif self.dataset_type == 'four_point':
                         # x1, y1, x2, y2, x3, y3, x4, y4, transcripts
-                        poly = poly[:8]
-                        poly = list(map(int, poly))
-                        polys.append(poly)
-                        ignore.append(False)
+                    #     poly = poly[:8]
+                    #     poly = list(map(int, poly))
+                    #     polys.append(poly)
+                    #     ignore.append(False)
             # label_list.append([np.array(polys), tags])
             label_list.append([polys, ignore])
         assert len(img_list) == len(label_list), 'image with label not correct'

@@ -9,7 +9,7 @@ import argparse
 import warnings
 import torch
 
-from torch.utils.data import DataLoader
+from torch.utils.data import ConcatDataset, DataLoader
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 
@@ -22,10 +22,35 @@ from ultocr.trainer.reg_train import TrainerReg
 warnings.filterwarnings('ignore')
 
 
-def get_data_loader(cfg, logger):
-    train_dataset = create_module(cfg['dataset']['function'])(cfg, is_training=True)
-    test_dataset = create_module(cfg['dataset']['function'])(cfg, is_training=False)
-    
+def concatenate_dataset(cfg, is_training):
+    if is_training:
+        dataset_list = []
+        root = cfg['dataset']['train_load']['train_root']
+        select_data = cfg['dataset']['train_load']['train_select_data']
+        if select_data is not None:
+           select_data = select_data.split('-')
+           for select_d in select_data:
+               dataset = create_module(cfg['dataset']['function'])(os.path.join(root, select_d), cfg, is_training=True)
+               dataset_list.append(dataset)
+    else:
+        dataset_list = []
+        root = cfg['dataset']['test_load']['test_root']
+        select_data = cfg['dataset']['test_load']['test_select_data']
+        if select_data is not None:
+           select_data = select_data.split('-')
+           for select_d in select_data:
+               dataset = create_module(cfg['dataset']['function'])(os.path.join(root, select_d), cfg, is_training=True)
+               dataset_list.append(dataset)
+    concatenated_dataset = ConcatDataset(dataset_list)
+    return concatenated_dataset
+
+def get_data_loader(cfg):
+    if cfg['dataset']['type'] == 'lmdb':
+        train_dataset = concatenate_dataset(cfg, is_training=True)
+        test_dataset = concatenate_dataset(cfg, is_training=False)
+    else:
+        train_dataset = create_module(cfg['dataset']['function'])(None, cfg, is_training=True)
+        test_dataset = create_module(cfg['dataset']['function'])(None, cfg, is_training=False)
     train_sampler = DistributedSampler(train_dataset) if cfg['trainer']['distributed'] else None
     test_sampler = DistValSampler(list(range(len(test_dataset))), batch_size=cfg['dataset']['test_load']['batch_size'],
                                  distributed=cfg['trainer']['distributed'])
@@ -99,7 +124,7 @@ def main(args):
         logger.info(f'[Process {os.getpid()}] world_size = {dist.get_world_size()}, ' + f'rank = {dist.get_rank()}, backend={dist.get_backend()}') if local_check else None
 
     # create train, test loader
-    train_loader, test_loader = get_data_loader(cfg, logger)
+    train_loader, test_loader = get_data_loader(cfg)
     logger.info('Loaded successful!. Train datasets: {}, test datasets: {}'.format(len(train_loader) * local_world_size * cfg['dataset']['train_load']['batch_size'], len(test_loader) * local_world_size * cfg['dataset']['test_load']['batch_size'])) if local_check else None
     model = create_module(cfg['model']['function'])(cfg)
     logger.info('Model created, trainable parameters:') if local_check else None

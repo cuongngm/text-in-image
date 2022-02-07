@@ -5,16 +5,16 @@ base:
   gpu_id: 1
 
 dataset:
-  type: 'txt'  # lmdb / txt
+  type: 'lmdb'  # lmdb / txt
   new_shape: [256, 32]
   train_load:
-    train_img_dir: 'dataset/hoadon_ocr'
-    train_label_dir: 'dataset/hoadon_ocr/train.txt'
+    train_root: 'dataset/lmdb_data'
+    train_select_data: 'hoadon_train-cdp'
     batch_size: 32
     num_workers: 4
   test_load:
-    test_img_dir: 'dataset/hoadon_ocr'
-    test_label_dir: 'dataset/hoadon_ocr/test.txt'
+    test_root: 'dataset/lmdb_data'
+    test_select_data: 'hoadon_val'
     batch_size: 16
     num_workers: 4
   preprocess:

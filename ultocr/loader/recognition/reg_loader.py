@@ -1,6 +1,9 @@
 import os
+import lmdb
+import io
 import numpy as np
 from PIL import Image
+
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
@@ -8,24 +11,51 @@ from ultocr.utils.utils_function import create_module
 
 
 class RegLoader(Dataset):
-    def __init__(self, config, is_training=True):
+    def __init__(self, root, config, is_training=True):
         self.img_w = config['dataset']['new_shape'][0]
         self.img_h = config['dataset']['new_shape'][1]
         self.max_length = config['post_process']['max_len']
         self.case_sensitive = config['dataset']['preprocess']['case_sensitive']
         self.to_gray = config['dataset']['preprocess']['to_gray']
         self.transform = create_module(config['dataset']['preprocess']['transform'])(self.img_w, self.img_h)
-
-        if is_training:
-            images, labels = self.get_base_info(config['dataset']['train_load']['train_img_dir'],
-                                                config['dataset']['train_load']['train_label_dir'])
-        else:
-            images, labels = self.get_base_info(config['dataset']['test_load']['test_img_dir'],
-                                                config['dataset']['test_load']['test_label_dir'])
-        self.all_images = images
-        self.all_labels = labels
+        if config['dataset']['type'] == 'txt':
+            if is_training:
+                images, labels = self.get_base_info(config['dataset']['train_load']['train_img_dir'],
+                                                    config['dataset']['train_load']['train_label_dir'])
+            else:
+                images, labels = self.get_base_info(config['dataset']['test_load']['test_img_dir'],
+                                                    config['dataset']['test_load']['test_label_dir'])
+            self.all_images = images
+            self.all_labels = labels
+        
+        if config['dataset']['type'] == 'lmdb':
+            self.env = lmdb.open(root,
+                    max_readers=32, readonly=True, lock=False, readahead=False, meminit=False)
+            if not self.env:
+                raise RuntimeError('Lmdb file cannot be open')
+            self.all_images, self.all_labels = self.get_base_info_lmdb()
         self.is_training = is_training
+        self.config = config
+        
+    def get_base_info_lmdb(self):
+        image_keys = []
+        labels = []
+        with self.env.begin(write=False) as txn:
+            nSamples = int(txn.get(b"num-samples").decode())
+            for i in range(nSamples):
+                index = i + 1
+                image_key = ('image-%09d' % index).encode()
+                label_key = ('label-%09d' % index).encode()
 
+                label = txn.get(label_key).decode()
+
+                if len(label) > self.max_length and self.max_length != -1:
+                    continue
+
+                image_keys.append(image_key)
+                labels.append(label)
+        return image_keys, labels
+    
     def get_base_info(self, img_root, txt_file):
         image_names = []
         labels = []
@@ -47,14 +77,31 @@ class RegLoader(Dataset):
 
     def __getitem__(self, idx):
         file_name = self.all_images[idx]
-        img = Image.open(file_name)
-        try:
-            if self.to_gray:
-                img = img.convert('L')
-            else:
-                img = img.convert('RGB')
-        except Exception as e:
-            print('Error image for {}'.format(file_name))
+        
+        if self.config['dataset']['type'] == 'txt':
+            img = Image.open(file_name)
+            try:
+                if self.to_gray:
+                    img = img.convert('L')
+                else:
+                    img = img.convert('RGB')
+            except Exception as e:
+                print('Error image for {}'.format(file_name))
+            
+        elif self.config['dataset']['type'] == 'lmdb':
+            image_key = self.all_images[idx]
+            with self.env.begin(write=False) as txn:
+                imgbuf = txn.get(image_key)
+                buf = io.BytesIO()
+                buf.write(imgbuf)
+                buf.seek(0)
+                try:
+                    if self.to_gray:
+                        img = Image.open(buf).convert('L')
+                    else:
+                        img = Image.open(buf).convert('RGB')
+                except IOError:
+                    print('Error Image for {}'.format(image_key))
 
         if self.transform is not None:
             img, width_ratio = self.transform(img)

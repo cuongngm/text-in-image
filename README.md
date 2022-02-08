@@ -39,11 +39,11 @@ python run.py
 Then, open your browser at http://127.0.0.1:8000/docs. Request url of the image, the result is as follows:
 <!--
 ![](assets/fastapi.png)
-![](https://github.com/cuongngm/text-in-image/blob/main/assets/fastapi.png)
+![](https://github.com/cuongngm/text-in-image/blob/master/assets/fastapi.png)
 -->
 
 <div align=center>
-<img src="https://github.com/cuongngm/text-in-image/blob/main/assets/fastapi.png" width="500" height="150" />
+<img src="https://github.com/cuongngm/text-in-image/blob/master/assets/fastapi.png" width="1000" height="150" />
 </div>
 
 ### Todo

@@ -69,4 +69,4 @@ if __name__ == '__main__':
     model = End2end(opt.det_model, opt.reg_model, opt.det_config, opt.reg_config, opt.det_weight, opt.reg_weight)
     print('load model time', time.time() - load_time)
     
-    uvicorn.run(app, port=2513, host="172.26.33.18", reload=False)
+    uvicorn.run(app, port=8000, host="127.0.0.1", reload=False)

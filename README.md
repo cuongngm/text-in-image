@@ -1,6 +1,8 @@
 ### Quickstart
 ```bash
+pip install torch==1.7.0+cu101 torchvision==0.8.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 pip install ultocr  # install our project with package
+
 # for inference phase
 from ultocr.inference import End2end
 from PIL import Image
@@ -23,7 +25,7 @@ Custom params in each config file of config folder then:
 Single gpu training:
 ```bash
 python train.py --config config/db_resnet50.yaml --use_dist False
-# as mlflow
+# tracking with mlflow
 mlflow run text-in-image -P config=config/db_resnet50.yaml -P use_dist=False -P device=1
 ```
 Multi gpu training:
@@ -39,11 +41,11 @@ python run.py
 Then, open your browser at http://127.0.0.1:8000/docs. Request url of the image, the result is as follows:
 <!--
 ![](assets/fastapi.png)
-![](https://github.com/cuongngm/text-in-image/blob/master/assets/fastapi.png)
+![](assets/fastapi.png)
 -->
 
 <div align=center>
-<img src="https://github.com/cuongngm/text-in-image/blob/master/assets/fastapi.png" width="1000" height="150" />
+<img src="assets/fastapi.png" width="1000" height="150" />
 </div>
 
 ### Todo

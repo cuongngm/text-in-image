@@ -3,7 +3,6 @@ base:
   algorithm: DBnet
   save_dir: saved
   gpu_id: 1
-  weights: 1KWKMiN5iRDtqb1l3FO3o1z6ThxLvfq9a
 
 dataset:
   type: 'txt'

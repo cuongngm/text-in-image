@@ -26,6 +26,7 @@ class Result(BaseModel):
     text: Optional[str] = None
     latency: Optional[str] = None
 
+
 def return_response(response):
     json_compatible_response_data = jsonable_encoder(response)
     return JSONResponse(json_compatible_response_data)

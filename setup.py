@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="ultocr",
-    version="0.1.0",
+    version="0.2.1",
     author="cuongngm",
     author_email="cuonghip0908@gmail.com",
     description="text detection + text recognition",
@@ -17,7 +17,12 @@ setuptools.setup(
         'Polygon3',
         'pyclipper',
         'imgaug',
-        'distance'
+        'distance',
+        'tqdm',
+        'fastapi',
+        'uvicorn',
+        'mlflow'
+        'gdown'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

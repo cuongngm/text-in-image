@@ -6,3 +6,4 @@ mlflow
 tqdm
 uvicorn
 fastapi
+gdown

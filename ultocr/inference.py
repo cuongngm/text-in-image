@@ -1,9 +1,8 @@
 import cv2
-import argparse
 import yaml
 import numpy as np
 from PIL import Image
-from pathlib import Path
+
 import torch
 from torch.utils.data import Dataset, DataLoader
 from ultocr.utils.download import download_weights
@@ -146,7 +145,7 @@ class Recognition:
 class End2end:
     def __init__(self, det_model='DB', reg_model='MASTER',
                  det_config='config/db_resnet50.yaml', reg_config='config/master.yaml',
-                 det_weight=None, reg_weight=None):
+                 det_weight='1KWKMiN5iRDtqb1l3FO3o1z6ThxLvfq9a', reg_weight='1V9CGvqC_SsXOEXiNGlRbZxp9fn0qH6Lf'):
         assert det_model in ['DB'], '{} model is not implement'.format(det_model)
         assert reg_model in ['MASTER'], '{} model is not implement'.format(reg_model)
         with open(det_config, 'r') as stream:

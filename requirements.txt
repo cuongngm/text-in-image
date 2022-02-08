@@ -4,3 +4,5 @@ imgaug
 distance
 mlflow
 tqdm
+uvicorn
+fastapi

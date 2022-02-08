@@ -39,7 +39,7 @@ def concatenate_dataset(cfg, is_training):
         if select_data is not None:
            select_data = select_data.split('-')
            for select_d in select_data:
-               dataset = create_module(cfg['dataset']['function'])(os.path.join(root, select_d), cfg, is_training=True)
+               dataset = create_module(cfg['dataset']['function'])(os.path.join(root, select_d), cfg, is_training=False)
                dataset_list.append(dataset)
     concatenated_dataset = ConcatDataset(dataset_list)
     return concatenated_dataset
@@ -54,9 +54,16 @@ def get_data_loader(cfg):
     train_sampler = DistributedSampler(train_dataset) if cfg['trainer']['distributed'] else None
     test_sampler = DistValSampler(list(range(len(test_dataset))), batch_size=cfg['dataset']['test_load']['batch_size'],
                                  distributed=cfg['trainer']['distributed'])
-    train_loader = DataLoader(train_dataset, sampler=train_sampler, batch_size=cfg['dataset']['train_load']['batch_size'],
+    assert cfg['base']['model_type'] in ['text_detection', 'text_recognition']
+    if cfg['base']['model_type'] == 'text_detection':
+        train_loader = DataLoader(train_dataset, sampler=train_sampler, batch_size=cfg['dataset']['train_load']['batch_size'],
+                                  shuffle=False, num_workers=cfg['dataset']['train_load']['num_workers'])
+        test_loader = DataLoader(test_dataset, batch_sampler=test_sampler, batch_size=1,
+                                  num_workers=cfg['dataset']['test_load']['num_workers'])
+    else:
+        train_loader = DataLoader(train_dataset, sampler=train_sampler, batch_size=cfg['dataset']['train_load']['batch_size'],
                               collate_fn=DistCollateFn(), shuffle=False, num_workers=cfg['dataset']['train_load']['num_workers'])
-    test_loader = DataLoader(test_dataset, batch_sampler=test_sampler, batch_size=1,
+        test_loader = DataLoader(test_dataset, batch_sampler=test_sampler, batch_size=1,
                              collate_fn=DistCollateFn(), num_workers=cfg['dataset']['test_load']['num_workers'])
     return train_loader, test_loader
 

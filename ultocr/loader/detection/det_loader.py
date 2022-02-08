@@ -11,7 +11,7 @@ from ultocr.loader.detection.make_bordermap import MakeBorderMap
 
 
 class DetLoader(Dataset):
-    def __init__(self, config, is_training=True):
+    def __init__(self, root, config, is_training=True):
         super().__init__()
         self.crop_shape = config['dataset']['new_shape']
         # self.dataset_type = config['dataset']['type']

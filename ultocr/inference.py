@@ -6,7 +6,7 @@ from PIL import Image
 from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader
-
+from ultocr.utils.download import download_weights
 from ultocr.utils.utils_function import create_module, change_state_dict
 from ultocr.loader.recognition.reg_loader import TextInference
 from ultocr.utils.det_utils import four_point_transform, sort_by_line, test_preprocess, draw_bbox
@@ -18,10 +18,10 @@ from mlflow.models.signature import infer_signature
 
 
 class Detection:
-    def __init__(self, cfg):
+    def __init__(self, weight, cfg):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model = create_module(cfg['model']['function'])(cfg)
-        state_dict = torch.load('saved/db_pretrained.pth', map_location=self.device)['model_state_dict']
+        state_dict = torch.load(weight, map_location=self.device)['model_state_dict']
         # state_dict = change_state_dict(state_dict)
         model.load_state_dict(state_dict)
         self.model = model.to(self.device)
@@ -81,7 +81,7 @@ class Detection:
 
 
 class Recognition:
-    def __init__(self, cfg):
+    def __init__(self, weight, cfg):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.img_w = cfg['dataset']['new_shape'][0]
         self.img_h = cfg['dataset']['new_shape'][1]
@@ -90,7 +90,7 @@ class Recognition:
                                             max_length=100, ignore_over=False)
         
         model = create_module(cfg['model']['function'])(cfg)
-        state_dict = torch.load('saved/master_pretrained.pth', map_location=self.device)['model_state_dict']
+        state_dict = torch.load(weight, map_location=self.device)['model_state_dict']
         model.load_state_dict(state_dict)
         # model = mlflow.pytorch.load_model(model_uri='abc')
         self.model = model.to(self.device)
@@ -144,21 +144,27 @@ class Recognition:
 
 
 class End2end:
-    def __init__(self, img_path, det_model='DB', reg_model='MASTER',
-                 det_config='config/db_resnet50.yaml', reg_config='config/master.yaml'):
-        self.img_path = img_path
+    def __init__(self, det_model='DB', reg_model='MASTER',
+                 det_config='config/db_resnet50.yaml', reg_config='config/master.yaml',
+                 det_weight=None, reg_weight=None):
         assert det_model in ['DB'], '{} model is not implement'.format(det_model)
         assert reg_model in ['MASTER'], '{} model is not implement'.format(reg_model)
         with open(det_config, 'r') as stream:
             det_cfg = yaml.safe_load(stream)
-        self.detection = Detection(det_cfg)
+        if '.pth' not in det_weight:
+            det_weight = download_weights(det_weight)
+        self.detection = Detection(det_weight, det_cfg)
         
         with open(reg_config, 'r') as stream:
             reg_cfg = yaml.safe_load(stream)
-        self.recognition = Recognition(reg_cfg)
+        if '.pth' not in reg_weight:
+            reg_weight = download_weights(reg_weight)
+        self.recognition = Recognition(reg_weight, reg_cfg)
           
-    def get_result(self):
-        img = cv2.imread(self.img_path)
+    def get_result(self, input_image):
+        # input_image: PIL image
+        img = np.array(input_image)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         det_result = self.detection.detect(img)
         img_rs = det_result['img']
         all_img_crop = det_result['boundary_result']
@@ -170,4 +176,5 @@ class End2end:
             img_pil = Image.fromarray(img_crop.astype('uint8'), 'RGB')
             all_img_pil.append(img_pil)
         result = self.recognition.recognize(all_img_pil)
-        return result, img_rs
+        return result
+

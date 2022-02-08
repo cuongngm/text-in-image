@@ -3,8 +3,10 @@
 pip install ultocr  # install our project with package
 # for inference phase
 from ultocr.inference import End2end
-model = End2end(img_path='./', det_model='DB', reg_model='MASTER')
-result = model.get_result()
+from PIL import Image
+model = End2end(det_model='DB', reg_model='MASTER')
+image = Image.open('..')  # ..is the path of image
+result = model.get_result(image)
 ```
 
 ### Install
@@ -30,18 +32,24 @@ Multi gpu training:
 python -m torch.distributed.launch --nnodes=1 --node_rank=0 --nproc_per_node=2 --master_addr=127.0.0.1 --master_post=5555 train.py --config config/db_resnet50.yaml
 ```
 
-### Inference
+### Serve and Inference
 ```bash
-python demo.py --image_path saved/test/1.jpg --save_path saved/test
+python run.py
 ```
+Then, open your browser at http://127.0.0.1:8000/docs. Request url of the image, the result is as follows:
+<!--
+![](assets/fastapi.png)
+![](https://github.com/cuongngm/text-in-image/blob/main/assets/fastapi.png)
+-->
+
+<div align=center>
+<img src="https://github.com/cuongngm/text-in-image/blob/main/assets/fastapi.png" width="500" height="150" />
+</div>
 
 ### Todo
 - [x] Multi gpu training
-- [x] Release model zoo
 - [x] Tracking experiments with Mlflow
-- [ ] Model serving with Mlflow
-- [ ] Key information extraction
-- [ ] Image orientation classifier
+- [x] Model serving with FastAPI
 - [ ] Add more text detection and recognition model
 
 ### Reference

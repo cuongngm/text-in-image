@@ -113,7 +113,6 @@ def createDataset(outputPath, root_dir, annotation_path):
 
 if __name__ == '__main__':
     import argparse
-    # createDataset(outputPath='lmdb/val_pubtabnet_ver0', root_dir='/data/cuongnm1/TableMASTER-mmocr', annotation_path='/data/cuongnm1/TableMASTER-mmocr/data/mmocr_pubtabnet_recognition_0726/recognition_val_txt/0.txt')
     parser = argparse.ArgumentParser()
     parser.add_argument('--output_path', type=str, default='lmdb/new', help='output lmdb path')
     parser.add_argument('--root_dir', type=str, default='/data/cuongnm1/dataset', help='root dataset path')

@@ -10,7 +10,7 @@ import os
 import time
 import argparse
 from pydantic import BaseModel
-from ultocr.inference import End2end
+from ultocr.inference import OCR
 
 
 def download_image(image_url):
@@ -67,7 +67,7 @@ def predict(image_url: str):
 if __name__ == '__main__':
     opt = parse_args()
     load_time = time.time()
-    model = End2end(opt.det_model, opt.reg_model, opt.det_config, opt.reg_config, opt.det_weight, opt.reg_weight)
+    model = OCR(opt.det_model, opt.reg_model, opt.det_config, opt.reg_config, opt.det_weight, opt.reg_weight)
     print('load model time', time.time() - load_time)
     
     uvicorn.run(app, port=8000, host="127.0.0.1", reload=False)

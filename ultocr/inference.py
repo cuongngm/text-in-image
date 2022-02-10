@@ -6,7 +6,7 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset, DataLoader
 from ultocr.utils.download import download_weights
-from ultocr.utils.utils_function import create_module, change_state_dict
+from ultocr.utils.utils_function import create_module
 from ultocr.loader.recognition.reg_loader import TextInference
 from ultocr.utils.det_utils import four_point_transform, sort_by_line, test_preprocess, draw_bbox
 from ultocr.loader.recognition.translate import LabelConverter
@@ -85,9 +85,8 @@ class Recognition:
         self.img_w = cfg['dataset']['new_shape'][0]
         self.img_h = cfg['dataset']['new_shape'][1]
         self.batch = 16
-        self.convert = LabelConverter(classes=cfg['dataset']['vocab'],
-                                            max_length=100, ignore_over=False)
-        
+        vocab_file = download_weights('1Lo9L_k63M7vpiR10zii5nzL4GGUSuntM')
+        self.convert = LabelConverter(classes=vocab_file, max_length=100, ignore_over=False)
         model = create_module(cfg['model']['function'])(cfg)
         state_dict = torch.load(weight, map_location=self.device)['model_state_dict']
         model.load_state_dict(state_dict)
@@ -142,18 +141,22 @@ class Recognition:
         return pred_results
 
 
-class End2end:
+class OCR:
     def __init__(self, det_model='DB', reg_model='MASTER',
-                 det_config='config/db_resnet50.yaml', reg_config='config/master.yaml',
+                 det_config='1ca-ym1bAZTmgPyEL78PRnJ-_Jn1VPT-C', reg_config='1xL_DWV9Yc5qwc9ucVHlYv-xyrrvkOzzL',
                  det_weight='1KWKMiN5iRDtqb1l3FO3o1z6ThxLvfq9a', reg_weight='1V9CGvqC_SsXOEXiNGlRbZxp9fn0qH6Lf'):
         assert det_model in ['DB'], '{} model is not implement'.format(det_model)
         assert reg_model in ['MASTER'], '{} model is not implement'.format(reg_model)
+        if '.yaml' not in det_config:
+            det_config = download_weights(det_config)
         with open(det_config, 'r') as stream:
             det_cfg = yaml.safe_load(stream)
         if '.pth' not in det_weight:
             det_weight = download_weights(det_weight)
         self.detection = Detection(det_weight, det_cfg)
-        
+
+        if '.yaml' not in reg_config:
+            reg_config = download_weights(reg_config)
         with open(reg_config, 'r') as stream:
             reg_cfg = yaml.safe_load(stream)
         if '.pth' not in reg_weight:

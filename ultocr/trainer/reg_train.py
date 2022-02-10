@@ -8,7 +8,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from ultocr.loader.recognition.translate import LabelConverter
 from ultocr.metrics.reg_metrics import AverageMetricTracker
-from ultocr.utils.utils_function import create_module, save_checkpoint
+from ultocr.utils.utils_function import create_module
 from ultocr.model.recognition.postprocess import greedy_decode
 import mlflow
 from mlflow.tracking import MlflowClient

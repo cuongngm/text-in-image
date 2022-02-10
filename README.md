@@ -1,12 +1,12 @@
 ### Quickstart
 ```bash
 pip install torch==1.7.0+cu101 torchvision==0.8.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
-pip install ultocr  # install our project with package
+pip install --upgrade ultocr  # install our project with package
 
 # for inference phase
-from ultocr.inference import End2end
+from ultocr.inference import OCR
 from PIL import Image
-model = End2end(det_model='DB', reg_model='MASTER')
+model = OCR(det_model='DB', reg_model='MASTER')
 image = Image.open('..')  # ..is the path of image
 result = model.get_result(image)
 ```

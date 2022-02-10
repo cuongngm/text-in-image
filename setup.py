@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="ultocr",
-    version="0.2.1",
+    version="0.2.4",
     author="cuongngm",
     author_email="cuonghip0908@gmail.com",
     description="text detection + text recognition",
@@ -21,7 +21,7 @@ setuptools.setup(
         'tqdm',
         'fastapi',
         'uvicorn',
-        'mlflow'
+        'mlflow',
         'gdown'
     ],
     classifiers=[

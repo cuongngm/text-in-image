@@ -110,8 +110,9 @@ class MASTERpostprocess:
         self.max_len = config['post_process']['max_len']
         self.sos_symbol = 1
         self.padding_symbol = 0
+        self.start_symbol = 2
         
-    def greedy_decode(model, input, device='cpu'):
+    def greedy_decode(self, model, input, device='cpu'):
         batch_size = input.size(0)
         memory = model.encode(input, None)
 
@@ -120,7 +121,7 @@ class MASTERpostprocess:
         ys[:, 0] = self.start_symbol
         # early stop mechanics
         check_eos = torch.empty(batch_size, dtype=torch.long)
-        check_eos = torch.ones_like(check).to(device)
+        check_eos = torch.ones_like(check_eos).to(device)
         for i in range(self.max_len + 1):
             out = model.decode(memory, None, ys, subsequent_mask(ys, self.padding_symbol))
             out = model.generator(out)

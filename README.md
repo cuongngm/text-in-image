@@ -10,6 +10,7 @@ model = OCR(det_model='DB', reg_model='MASTER')
 image = Image.open('..')  # ..is the path of image
 result = model.get_result(image)
 ```
+Or view in google colab [demo](https://colab.research.google.com/drive/1rncaTU_S8mjVusaOq3u9L_FT8ADSECeC?usp=sharing)
 
 ### Install
 ```bash
@@ -45,7 +46,7 @@ Then, open your browser at http://127.0.0.1:8000/docs. Request url of the image,
 -->
 
 <div align=center>
-<img src="assets/fastapi.png" width="1000" height="150" />
+<img src="assets/fastapi.png" width="800" height="200" />
 </div>
 
 ### Todo

@@ -186,8 +186,8 @@ class TrainerReg:
                 else:
                     model = self.model
 
-            outputs = greedy_decode(model, images, 100, 2, 0, self.device, True)
-            # outputs = self.post_process.greedy_decode(model, images, device=self.device)
+            # outputs = greedy_decode(model, images, 100, 2, 0, self.device, True)
+            outputs = self.post_process.greedy_decode(model, images, 100, 2, 0, self.device, True)
             correct = 0
             correct_case_ins = 0
             total_distance_ref = 0

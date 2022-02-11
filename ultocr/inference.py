@@ -87,6 +87,7 @@ class Recognition:
         self.batch = 16
         vocab_file = download_weights('1Lo9L_k63M7vpiR10zii5nzL4GGUSuntM')
         self.convert = LabelConverter(classes=vocab_file, max_length=100, ignore_over=False)
+        cfg['dataset']['vocab'] = vocab_file
         model = create_module(cfg['model']['function'])(cfg)
         state_dict = torch.load(weight, map_location=self.device)['model_state_dict']
         model.load_state_dict(state_dict)

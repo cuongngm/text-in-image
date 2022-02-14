@@ -9,7 +9,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from ultocr.loader.recognition.translate import LabelConverter
 from ultocr.metrics.reg_metrics import AverageMetricTracker
 from ultocr.utils.utils_function import create_module
-from ultocr.model.recognition.postprocess import greedy_decode
+# from ultocr.model.recognition.postprocess import greedy_decode
 import mlflow
 from mlflow.tracking import MlflowClient
 from mlflow.entities.model_registry.model_version_status import ModelVersionStatus
@@ -111,9 +111,9 @@ class TrainerReg:
                                      'Training stops'.format(self.early_stop)) if self.local_check else None
                     break
                 if best:
-                    self._save_checkpoint(epoch, save_best=True)
+                    self._save_checkpoint(epoch, save_best=True, save_current=False)
                 else:
-                    self._save_checkpoint(epoch, save_best=False)
+                    self._save_checkpoint(epoch, save_best=False, save_current=False)
         self.logger.info('Saved model') if self.local_check else None
        
         # model_uri = "runs:/{run_id}/{artifact_path}".format(run_id=run_num, artifact_path=artifact_path)
@@ -317,7 +317,7 @@ class TrainerReg:
             device = torch.device(device)
             return device, list_ids
         
-    def _save_checkpoint(self, epoch, save_best=False, step_idx=None):
+    def _save_checkpoint(self, epoch, save_best=False, save_current=False):
         '''
         Saving checkpoints
         :param epoch:  current epoch number
@@ -335,10 +335,8 @@ class TrainerReg:
             'epoch': epoch,
             'model_state_dict': model_state_dict,
         }
-        if step_idx is None:
+        if save_current:
             filename = str(self.save_model_dir / 'checkpoint-epoch{}.pth'.format(epoch))
-        else:
-            filename = str(self.save_model_dir / 'checkpoint-epoch{}-step{}.pth'.format(epoch, step_idx))
         torch.save(state, filename)
         self.logger.info("Saving checkpoint: {} ...".format(filename)) if self.local_check else None
 

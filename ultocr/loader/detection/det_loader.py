@@ -77,6 +77,7 @@ class DetLoader(Dataset):
         for poly in polys:
             poly = np.array(poly).astype(np.float64)
             poly = poly * scale
+            poly = poly.reshape(-1, 2).tolist()
             new_polys.append(poly)
         return new_img, new_polys
     
@@ -123,5 +124,6 @@ class DetLoader(Dataset):
                 'img': img,
                 'polys': polys,
                 'ignore': ignore
+
             }
         return data

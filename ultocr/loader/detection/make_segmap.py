@@ -51,8 +51,16 @@ class MakeSegMap:
                     np.int32)[np.newaxis, :, :], 0)
                 ignore[i] = True
             else:
-                shrinked = shrink_polygon_pyclipper(poly, self.shrink_ratio)
-                if shrinked.size == 0:
+
+                polygon_shape = Polygon(poly)
+                distance = polygon_shape.area * \
+                           (1 - np.power(self.shrink_ratio, 2)) / polygon_shape.length
+                subject = [tuple(l) for l in polys[i]]
+                padding = pyclipper.PyclipperOffset()
+                padding.AddPath(subject, pyclipper.JT_ROUND,
+                                pyclipper.ET_CLOSEDPOLYGON)
+                shrinked = padding.Execute(-distance)
+                if shrinked == []:
                     cv2.fillPoly(mask, poly.astype(
                         np.int32)[np.newaxis, :, :], 0)
                     ignore[i] = True

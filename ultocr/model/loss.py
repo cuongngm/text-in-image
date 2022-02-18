@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class DiceLoss(nn.Module):
-    def __init__(self, eps=1e-6):
+    def __init__(self, eps):
         super().__init__()
         self.eps = eps
 
@@ -25,12 +25,12 @@ class DiceLoss(nn.Module):
 class CELoss(nn.Module):
     def __init__(self):
         super().__init__()
-    
+
     def forward(self, pred, gt, ignore_index):
         loss = F.cross_entropy(pred, gt, ignore_index=0)
         return loss
     
-        
+
 class BalanceCrossEntropyLoss(nn.Module):
     def __init__(self, negative_ratio=3.0, eps=1e-6):
         super(BalanceCrossEntropyLoss, self).__init__()
@@ -63,19 +63,18 @@ class BalanceCrossEntropyLoss(nn.Module):
         return balance_loss
 
 
-class MaskL1Loss(nn.Module):
-    def __init__(self):
-        super(MaskL1Loss, self).__init__()
+class L1Loss(nn.Module):
+    def __init__(self, reduction='mean', eps=1e-6):
+        super().__init__()
+        self.reduction = reduction
+        self.eps = eps
 
-    def forward(self, pred: torch.Tensor, gt: torch.Tensor,
-                mask: torch.Tensor):
-        mask_sum = mask.sum()
-        if mask_sum.item() == 0:
-            return mask_sum
+    def forward(self, pred, gt, mask):
+        if mask is not None:
+            loss = (torch.abs(pred - gt) * mask).sum() / (mask.sum() + self.eps)
         else:
-            loss = (torch.abs(pred - gt) * mask).sum() / mask_sum
-            return loss
-
+            loss = torch.nn.L1Loss(reduction=self.reduction)(pred, gt)
+        return loss
 
 class DBLoss(nn.Module):
     def __init__(self, alpha=1., beta=10., reduction='mean', negative_ratio=3, eps=1e-6):
@@ -86,7 +85,7 @@ class DBLoss(nn.Module):
         self.negative_ratio = negative_ratio
         self.eps = eps
         self.ohem_loss = BalanceCrossEntropyLoss(negative_ratio, eps)
-        self.l1_loss = MaskL1Loss()
+        self.l1_loss = L1Loss()
         self.dice_loss = DiceLoss(eps)
 
     def forward(self, preds, gts):

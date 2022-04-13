@@ -86,7 +86,7 @@ class Recognition:
         self.img_h = cfg['dataset']['new_shape'][1]
         self.batch = 16
         vocab_file = download_weights('1Lo9L_k63M7vpiR10zii5nzL4GGUSuntM')
-        self.convert = LabelConverter(classes=vocab_file, max_length=100, ignore_over=False)
+        self.convert = LabelConverter(classes=vocab_file, max_length=25, ignore_over=False)
         cfg['dataset']['vocab'] = vocab_file
         model = create_module(cfg['model']['function'])(cfg)
         state_dict = torch.load(weight, map_location=self.device)['model_state_dict']
@@ -115,6 +115,8 @@ class Recognition:
             
             for index, (pred, prob) in enumerate(zip(outputs[:, 1:], probs)):
                 pred_text = ''
+                previous_text = None
+                repeat = 0
                 pred_score_list = []
                 for i in range(len(pred)):
                     if pred[i] == self.convert.EOS:
@@ -124,6 +126,11 @@ class Recognition:
                         continue
 
                     decoder_char = self.convert.decode(pred[i])
+                    if decoder_char == previous_text:
+                        repeat += 1
+                    previous_text = decoder_char
+                    if repeat == 5:
+                        break
                     pred_text += decoder_char
                     pred_score_list.append(prob[i])
                 
@@ -171,6 +178,7 @@ class OCR:
         det_result = self.detection.detect(img)
         img_rs = det_result['img']
         all_img_crop = det_result['boundary_result']
+        boxes_coordinate = det_result['box_coordinate']
         if len(all_img_crop) == 0:
             result = 'khong co text trong anh'
             return result
@@ -179,5 +187,27 @@ class OCR:
             img_pil = Image.fromarray(img_crop.astype('uint8'), 'RGB')
             all_img_pil.append(img_pil)
         result = self.recognition.recognize(all_img_pil)
-        return result
+        infos = ''
+        for box, text in zip(boxes_coordinate, result):
+            box = list(map(str, box))
+            box = ','.join(box)
+            infos += box + ',' + text + '\n'
+        return infos
 
+
+def get_result_bkai(root, img_dir, save_dir):
+    model = OCR(det_model='DB', reg_model='MASTER', det_config='config/db_resnet50.yaml', reg_config='config/master_lmdb.yaml', det_weight='saved/ckpt/DBnet/0412_154242/model_best.pth', reg_weight='saved/ckpt/MASTER/0412_212701/model_best.pth')
+    for imgname in os.listdir(os.path.join(root, img_dir)):
+        print(imgname)
+        img_path = os.path.join(root, img_dir, imgname)
+        img = Image.open(img_path)
+        infos = model.get_result(img)
+        with open(os.path.join(root, save_dir, 'res_' + imgname.replace('.jpg', '.txt')), 'w') as fw:
+            fw.write(infos)
+        
+
+if __name__ == '__main__':
+    from pathlib import Path
+    import os
+    Path('dataset/bkai/prediction').mkdir(parents=True, exist_ok=True)
+    get_result_bkai(root='dataset/bkai', img_dir='public_test_img', save_dir='prediction')

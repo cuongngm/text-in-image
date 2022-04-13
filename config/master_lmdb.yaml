@@ -6,15 +6,15 @@ base:
 
 dataset:
   type: 'lmdb'  # lmdb / txt
-  new_shape: [256, 32]
+  new_shape: [160, 48]
   train_load:
-    train_root: 'dataset/lmdb_data'
-    train_select_data: 'hoadon_train-cdp'
+    train_root: 'dataset/bkai/recog'
+    train_select_data: 'train_lmdb'
     batch_size: 32
     num_workers: 4
   test_load:
-    test_root: 'dataset/lmdb_data'
-    test_select_data: 'hoadon_val'
+    test_root: 'dataset/bkai/recog'
+    test_select_data: 'test_lmdb'
     batch_size: 16
     num_workers: 4
   preprocess:
@@ -89,7 +89,7 @@ trainer:
   local_rank: -1
   global_rank: -1
   early_stop: 10
-  resume: True
-  ckpt_file: 'saved/master_pretrained.pth'
+  resume: False
+  ckpt_file: 'saved/MJ_ST.pth'
 
 

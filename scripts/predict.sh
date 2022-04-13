@@ -1,0 +1,1 @@
+python ultocr/inference.py

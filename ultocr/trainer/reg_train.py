@@ -34,7 +34,7 @@ class TrainerReg:
         self.optimizer = optimizer
         self.criterion = criterion
         self.post_process = post_process
-        self.convert = LabelConverter(classes=config['dataset']['vocab'], max_length=100, ignore_over=False)
+        self.convert = LabelConverter(classes=config['dataset']['vocab'], max_length=config['post_process']['max_len'], ignore_over=False)
         self.train_metrics = AverageMetricTracker('loss')
         self.val_metrics = AverageMetricTracker('loss', 'word_acc', 'word_acc_case_insensitive',
                                                 'edit_distance_acc')
@@ -187,7 +187,7 @@ class TrainerReg:
                     model = self.model
 
             # outputs = greedy_decode(model, images, 100, 2, 0, self.device, True)
-            outputs = self.post_process.greedy_decode(model, images, 100, 2, 0, self.device, True)
+            outputs = self.post_process.greedy_decode(model, images, self.config['post_process']['max_len'], 2, 0, self.device, True)
             correct = 0
             correct_case_ins = 0
             total_distance_ref = 0

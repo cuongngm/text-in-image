@@ -86,7 +86,7 @@ class Recognition:
         self.img_h = cfg['dataset']['new_shape'][1]
         self.batch = 16
         vocab_file = download_weights('1Lo9L_k63M7vpiR10zii5nzL4GGUSuntM')
-        self.convert = LabelConverter(classes=vocab_file, max_length=25, ignore_over=False)
+        self.convert = LabelConverter(classes=vocab_file, max_length=cfg['post_process']['max_len'], ignore_over=False)
         cfg['dataset']['vocab'] = vocab_file
         model = create_module(cfg['model']['function'])(cfg)
         state_dict = torch.load(weight, map_location=self.device)['model_state_dict']
@@ -192,7 +192,7 @@ class OCR:
             box = list(map(str, box))
             box = ','.join(box)
             infos += box + ',' + text + '\n'
-        return infos
+        return result
 
 
 def get_result_bkai(root, img_dir, save_dir):
@@ -210,4 +210,9 @@ if __name__ == '__main__':
     from pathlib import Path
     import os
     Path('dataset/bkai/prediction').mkdir(parents=True, exist_ok=True)
-    get_result_bkai(root='dataset/bkai', img_dir='public_test_img', save_dir='prediction')
+    # get_result_bkai(root='dataset/bkai', img_dir='public_test_img', save_dir='prediction')
+    model = OCR(det_model='DB', reg_model='MASTER', det_config='config/db_resnet50.yaml', reg_config='config/master_lmdb.yaml', det_weight='saved/db_pretrain.pth', reg_weight='saved/master_pretrain.pth')
+    img_path = 'assets/2.jpg'
+    img = Image.open(img_path)
+    infos = model.get_result(img)
+    print(infos) 

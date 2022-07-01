@@ -209,10 +209,20 @@ def get_result_bkai(root, img_dir, save_dir):
 if __name__ == '__main__':
     from pathlib import Path
     import os
-    Path('dataset/bkai/prediction').mkdir(parents=True, exist_ok=True)
-    # get_result_bkai(root='dataset/bkai', img_dir='public_test_img', save_dir='prediction')
+    
     model = OCR(det_model='DB', reg_model='MASTER', det_config='config/db_resnet50.yaml', reg_config='config/master_lmdb.yaml', det_weight='saved/db_pretrain.pth', reg_weight='saved/master_pretrain.pth')
+    """ 
+    artifact_path = 'ocr'
+    # mlflow.set_tracking_uri('sqlite:///mlruns.db')
+    with mlflow.start_run() as run:
+        run_num = run.info.run_id
+    model_uri = "runs:/{run_id}/{artifact_path}".format(run_id=run_num, artifact_path=artifact_path)
+    print('uri', model_uri)
+    mlflow.pytorch.log_model(model, artifact_path)
+    mlflow.pytorch.save_model(model, artifact_path)
+    mlflow.register_model(model_uri=model_uri, name=artifact_path)
+    """
     img_path = 'assets/2.jpg'
     img = Image.open(img_path)
     infos = model.get_result(img)
-    print(infos) 
+    print(infos)

@@ -8,4 +8,6 @@ RUN mkdir /app
 ADD . /app
 WORKDIR /app
 RUN pip3 install -r requirements.txt
+EXPOSE 4002
+ENTRYPOINT ["python", "run.py"]
 

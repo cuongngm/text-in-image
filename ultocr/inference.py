@@ -195,34 +195,3 @@ class OCR:
         return result
 
 
-def get_result_bkai(root, img_dir, save_dir):
-    model = OCR(det_model='DB', reg_model='MASTER', det_config='config/db_resnet50.yaml', reg_config='config/master_lmdb.yaml', det_weight='saved/ckpt/DBnet/0412_154242/model_best.pth', reg_weight='saved/ckpt/MASTER/0412_212701/model_best.pth')
-    for imgname in os.listdir(os.path.join(root, img_dir)):
-        print(imgname)
-        img_path = os.path.join(root, img_dir, imgname)
-        img = Image.open(img_path)
-        infos = model.get_result(img)
-        with open(os.path.join(root, save_dir, 'res_' + imgname.replace('.jpg', '.txt')), 'w') as fw:
-            fw.write(infos)
-        
-
-if __name__ == '__main__':
-    from pathlib import Path
-    import os
-    
-    model = OCR(det_model='DB', reg_model='MASTER', det_config='config/db_resnet50.yaml', reg_config='config/master_lmdb.yaml', det_weight='saved/db_pretrain.pth', reg_weight='saved/master_pretrain.pth')
-    """ 
-    artifact_path = 'ocr'
-    # mlflow.set_tracking_uri('sqlite:///mlruns.db')
-    with mlflow.start_run() as run:
-        run_num = run.info.run_id
-    model_uri = "runs:/{run_id}/{artifact_path}".format(run_id=run_num, artifact_path=artifact_path)
-    print('uri', model_uri)
-    mlflow.pytorch.log_model(model, artifact_path)
-    mlflow.pytorch.save_model(model, artifact_path)
-    mlflow.register_model(model_uri=model_uri, name=artifact_path)
-    """
-    img_path = 'assets/2.jpg'
-    img = Image.open(img_path)
-    infos = model.get_result(img)
-    print(infos)

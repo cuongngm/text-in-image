@@ -36,6 +36,44 @@ def four_point_transform(image, pts):
     return warped
 
 
+def is_on_same_line(box_a, box_b, min_y_overlap_ratio=0.8):
+    """Check if two boxes are on the same line by their y-axis coordinates.
+
+    Two boxes are on the same line if they overlap vertically, and the length
+    of the overlapping line segment is greater than min_y_overlap_ratio * the
+    height of either of the boxes.
+
+    Args:
+        box_a (list), box_b (list): Two bounding boxes to be checked
+        min_y_overlap_ratio (float): The minimum vertical overlapping ratio
+                                    allowed for boxes in the same line
+
+    Returns:
+        The bool flag indicating if they are on the same line
+    """
+    a_y_min = np.min(box_a[1::2])
+    b_y_min = np.min(box_b[1::2])
+    a_y_max = np.max(box_a[1::2])
+    b_y_max = np.max(box_b[1::2])
+
+    # Make sure that box a is always the box above another
+    if a_y_min > b_y_min:
+        a_y_min, b_y_min = b_y_min, a_y_min
+        a_y_max, b_y_max = b_y_max, a_y_max
+
+    if b_y_min <= a_y_max:
+        if min_y_overlap_ratio is not None:
+            sorted_y = sorted([b_y_min, b_y_max, a_y_max])
+            overlap = sorted_y[1] - sorted_y[0]
+            min_a_overlap = (a_y_max - a_y_min) * min_y_overlap_ratio
+            min_b_overlap = (b_y_max - b_y_min) * min_y_overlap_ratio
+            return overlap >= min_a_overlap or \
+                overlap >= min_b_overlap
+        else:
+            return True
+    return False
+
+
 def sort_by_line(box_info, image):
     h, w = image.shape[:2]
     scale = max(h/800, 1)
@@ -43,10 +81,12 @@ def sort_by_line(box_info, image):
     all_same_row = []
     same_row = []
     for i in range(len(box_info)-1):
+        if is_on_same_line(np.array(box_info[i+1]).reshape(-1).tolist(), np.array(box_info[i]).reshape(-1).tolist()):
+            same_row.append(box_info[i])
         # if compute_center(box_info[i+1])[1] - compute_center(box_info[i])[1] < 5 * scale:
         #     same_row.append(box_info[i])
-        if box_info[i+1][0][1] - box_info[i][0][1] < 5:
-            same_row.append(box_info[i])
+        # if box_info[i+1][0][1] - box_info[i][0][1] < 5:
+        #     same_row.append(box_info[i])
         else:
             same_row.append(box_info[i])
             all_same_row.append(same_row)

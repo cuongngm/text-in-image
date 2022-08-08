@@ -8,13 +8,13 @@ dataset:
   type: 'txt'  # lmdb / txt
   new_shape: [256, 32]
   train_load:
-    train_img_dir: 'dataset/hoadon_ocr'
-    train_label_dir: 'dataset/hoadon_ocr/train.txt'
+    train_img_dir: 'dataset/pres_OCR'
+    train_label_dir: 'dataset/pres_OCR/train.txt'
     batch_size: 32
     num_workers: 4
   test_load:
-    test_img_dir: 'dataset/hoadon_ocr'
-    test_label_dir: 'dataset/hoadon_ocr/test.txt'
+    test_img_dir: 'dataset/pres_OCR'
+    test_label_dir: 'dataset/pres_OCR/val.txt'
     batch_size: 16
     num_workers: 4
   preprocess:
@@ -77,7 +77,7 @@ post_process:
   function: ultocr.model.recognition.postprocess,MASTERpostprocess
   
 trainer:
-  epochs: 33
+  epochs: 35
   do_validation: True
   validation_epoch: 1
   log_step_interval: 200
@@ -90,6 +90,6 @@ trainer:
   global_rank: -1
   early_stop: 10
   resume: True
-  ckpt_file: 'saved/master_pretrained.pth'
+  ckpt_file: 'saved/master_pretrain.pth'
 
 

@@ -129,23 +129,28 @@ def det_format_to_labelme(img_dir, anns_dir, json_anns_dir):
             json.dump(dic, out_file)
 
 
-def crop_img(img_dir, box_dir, save_dir):
+def crop_img(img_dir, box_dir, save_dir, save_label_file):
     """
     crop box image from coordinate
     :param img_dir:
     :param box_dir:
     :return:
     """
+    text_info = ''
     for filename in tqdm(sorted(os.listdir(img_dir))):
         img_path = os.path.join(img_dir, filename)
         img = cv2.imread(img_path)
         # h, w = img.shape[:2]
-        box_path = os.path.join(box_dir, filename.replace('.jpg', '.txt'))
+        box_path = os.path.join(box_dir, 'gt_' + filename.replace('.jpg', '.txt'))
         with open(box_path, 'r') as fr:
             lines = fr.readlines()
             for idx, line in enumerate(lines):
                 line = line.strip().split(',')
                 box = line[:8]
+                label = line[8:]
+                label = ','.join(label)
+                if '#' in label:
+                    continue
                 box = list(map(int, box))
                 box = np.array(box).reshape(-1, 2).tolist()
                 tl, bl, tr, br = box[0], box[3], box[1], box[2]
@@ -156,7 +161,10 @@ def crop_img(img_dir, box_dir, save_dir):
                 M = cv2.getPerspectiveTransform(pts1, pts2)
                 dst = cv2.warpPerspective(img, M, (w, h))
                 cv2.imwrite(os.path.join(save_dir, filename[:-4] + '_' + str(idx) + '.jpg'), dst)
-
+                text_info += os.path.join(save_dir.split('/')[-1], filename[:-4] + '_' + str(idx) + '.jpg') + '\t' + label + '\n'
+    with open(save_label_file, 'w') as fw:
+        fw.write(text_info)
+                
 
 if __name__ == '__main__':
     labelme_to_det_format(json_dir='../../../dataset/CDP/json', box_dir='../../../dataset/CDP/box')

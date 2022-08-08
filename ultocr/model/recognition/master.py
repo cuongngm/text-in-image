@@ -23,7 +23,7 @@ class MASTER(nn.Module):
         super().__init__()
         self.config = config
         # vocab_file = download_weights('1Lo9L_k63M7vpiR10zii5nzL4GGUSuntM')
-        self.convert = LabelConverter(classes=config['dataset']['vocab'], max_length=100, ignore_over=False)
+        self.convert = LabelConverter(classes=config['dataset']['vocab'], max_length=config['post_process']['max_len'], ignore_over=False)
         tgt_vocab = self.convert.n_class
         self.with_encoder = config['model']['common']['with_encoder']
         for p in self.parameters():

@@ -34,7 +34,7 @@ class TrainerReg:
         self.optimizer = optimizer
         self.criterion = criterion
         self.post_process = post_process
-        self.convert = LabelConverter(classes=config['dataset']['vocab'], max_length=100, ignore_over=False)
+        self.convert = LabelConverter(classes=config['dataset']['vocab'], max_length=config['post_process']['max_len'], ignore_over=False)
         self.train_metrics = AverageMetricTracker('loss')
         self.val_metrics = AverageMetricTracker('loss', 'word_acc', 'word_acc_case_insensitive',
                                                 'edit_distance_acc')
@@ -187,7 +187,7 @@ class TrainerReg:
                     model = self.model
 
             # outputs = greedy_decode(model, images, 100, 2, 0, self.device, True)
-            outputs = self.post_process.greedy_decode(model, images, 100, 2, 0, self.device, True)
+            outputs = self.post_process.greedy_decode(model, images, self.config['post_process']['max_len'], 2, 0, self.device, True)
             correct = 0
             correct_case_ins = 0
             total_distance_ref = 0
@@ -335,14 +335,15 @@ class TrainerReg:
             'epoch': epoch,
             'model_state_dict': model_state_dict,
         }
+        filename = str(self.save_model_dir / 'checkpoint-epoch{}.pth'.format(epoch))
         if save_current:
-            filename = str(self.save_model_dir / 'checkpoint-epoch{}.pth'.format(epoch))
-        torch.save(state, filename)
-        self.logger.info("Saving checkpoint: {} ...".format(filename)) if self.local_check else None
+            torch.save(state, filename)
+            self.logger.info("Saving checkpoint: {} ...".format(filename)) if self.local_check else None
 
         if save_best:
             best_path = str(self.save_model_dir / 'model_best.pth')
-            shutil.copyfile(filename, best_path)
+            # shutil.copyfile(filename, best_path)
+            torch.save(state, best_path)
             self.logger.info(
                 f"Saving current best (at {epoch} epoch): model_best.pth") if self.local_check else None
 

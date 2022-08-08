@@ -38,8 +38,8 @@ def parse_args():
     parser.add_argument('--reg_model', type=str, default='MASTER', help='text recognition model')
     parser.add_argument('--det_config', type=str, default='config/db_resnet50.yaml', help='DBnet config')
     parser.add_argument('--reg_config', type=str, default='config/master.yaml', help='MASTER config')
-    parser.add_argument('--det_weight', type=str, default='1KWKMiN5iRDtqb1l3FO3o1z6ThxLvfq9a', help='DBnet weight')
-    parser.add_argument('--reg_weight', type=str, default='1V9CGvqC_SsXOEXiNGlRbZxp9fn0qH6Lf', help='MASTER weight')
+    parser.add_argument('--det_weight', type=str, default='saved/db_pretrain.pth', help='DBnet weight')
+    parser.add_argument('--reg_weight', type=str, default='saved/master_pretrain.pth', help='MASTER weight')
     args = parser.parse_args()
     return args
 

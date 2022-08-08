@@ -2,7 +2,4 @@ name: text-in-image
 conda_env: conda.yaml
 entry_points:
   main:
-    parameters:
-      config: {type: str, default:config/db_resnet50.yaml}
-      use_dist: {type: bool, default:False}
-    command: "python train.py --config {config} --use_dist {use_dist}"
+    command: "python serve.py"

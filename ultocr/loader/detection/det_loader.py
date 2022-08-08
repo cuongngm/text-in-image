@@ -38,22 +38,27 @@ class DetLoader(Dataset):
             img_list.append(img_path)
             polys = []
             ignore = []
-            # label_name = 'gt_' + img_name.replace('.jpg', '.txt')
-            label_name = img_name.replace('.jpg', '.txt')
+            label_name = 'gt_' + img_name.replace('.jpg', '.txt')
+            # label_name = img_name.replace('.jpg', '.txt')
             with open(os.path.join(label_dir, label_name), 'r', encoding='utf-8') as file:
                 lines = file.readlines()
                 for line in lines:
                     poly = line.strip().strip('\ufeff').strip('\xef\xbb\xbf').split(',')
                     # if self.dataset_type == 'multi_point':
                     # x1, y1, x2, y2, ..., xn, yn
-                    poly = list(map(int, poly))
-                    polys.append(poly)
-                    ignore.append(False)
+                    # poly = list(map(int, poly))
+                    # polys.append(poly)
+                    # ignore.append(False)
                     # elif self.dataset_type == 'four_point':
                         # x1, y1, x2, y2, x3, y3, x4, y4, transcripts
-                    #     poly = poly[:8]
-                    #     poly = list(map(int, poly))
-                    #     polys.append(poly)
+                    points = poly[:8]
+                    points = list(map(int, points))
+                    polys.append(points)
+                    tags = poly[8:]
+                    if '#' in tags:
+                        ignore.append(True)
+                    else:
+                        ignore.append(False)
                     #     ignore.append(False)
             # label_list.append([np.array(polys), tags])
             label_list.append([polys, ignore])

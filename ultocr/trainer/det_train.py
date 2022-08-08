@@ -180,14 +180,15 @@ class TrainerDet:
             'epoch': epoch,
             'model_state_dict': model_state_dict,
         }
+        filename = str(self.save_model_dir / 'checkpoint-epoch{}.pth'.format(epoch))
         if save_current:
-            filename = str(self.save_model_dir / 'checkpoint-epoch{}.pth'.format(epoch))
-        torch.save(state, filename)
-        self.logger.info("Saving checkpoint: {} ...".format(filename)) if self.local_check else None
+            torch.save(state, filename)
+            self.logger.info("Saving checkpoint: {} ...".format(filename)) if self.local_check else None
 
         if save_best:
             best_path = str(self.save_model_dir / 'model_best.pth')
-            shutil.copyfile(filename, best_path)
+            # shutil.copyfile(filename, best_path)
+            torch.save(state, best_path)
             self.logger.info(
                 f"Saving current best (at {epoch} epoch): model_best.pth") if self.local_check else None
 

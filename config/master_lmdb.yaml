@@ -6,16 +6,16 @@ base:
 
 dataset:
   type: 'lmdb'  # lmdb / txt
-  new_shape: [256, 32]
+  new_shape: [160, 48]
   train_load:
-    train_root: 'dataset/lmdb_data'
-    train_select_data: 'hoadon_train-cdp'
-    batch_size: 32
+    train_root: '../dataset/OCR_IE/wordbase/train'
+    train_select_data: 'bill_word-bkai-block_lotus-cdp-cord_ver1-cord_ver2-saoke-tdsd_ver3-tdsd_ver4-tdsd_ver5-tdsd_ver6-tdsd_ver7-tdsd_ver8-vintext-vn_synthdata'
+    batch_size: 64
     num_workers: 4
   test_load:
-    test_root: 'dataset/lmdb_data'
-    test_select_data: 'hoadon_val'
-    batch_size: 16
+    test_root: '../dataset/OCR_IE/wordbase/val'
+    test_select_data: 'block_lotus_val-cord_ver3-vn_synthdata'
+    batch_size: 32
     num_workers: 4
   preprocess:
     case_sensitive: True
@@ -73,7 +73,7 @@ scheduler:
   gamma: 0.1
 
 post_process:
-  max_len: 100
+  max_len: 40
   function: ultocr.model.recognition.postprocess,MASTERpostprocess
   
 trainer:
@@ -89,7 +89,7 @@ trainer:
   local_rank: -1
   global_rank: -1
   early_stop: 10
-  resume: True
-  ckpt_file: 'saved/master_pretrained.pth'
+  resume: False
+  ckpt_file: 'saved/MJ_ST.pth'
 
 

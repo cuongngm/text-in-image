@@ -17,8 +17,17 @@ Or view in google colab [demo](https://colab.research.google.com/drive/1rncaTU_S
 git clone https://github.com/cuongngm/text-in-image
 pip install torch==1.7.0+cu101 torchvision==0.8.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -r requirements.txt
+bash scripts/download_weights.sh
 ```
 ### Prepare data
+
+
+### Pretrained model
+| Model                                                                                        | size(MB) |
+|----------------------------------------------------------------------------------------------|------ |
+| [DB](https://drive.google.com/file/d/1IhNXc1aaiuNtcC-LniwgfYylc6Du5LIX/view?usp=sharing)     |140    
+| [MASTER](https://drive.google.com/file/d/1xQccsZiNVWoB1g59fi11RHn1CkpjRlVN/view?usp=sharing) |261     
+
 
 ### Train
 Custom params in each config file of config folder then:

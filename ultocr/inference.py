@@ -17,8 +17,8 @@ from mlflow.models.signature import infer_signature
 
 
 class Detection:
-    def __init__(self, weight, cfg):
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    def __init__(self, weight, cfg, device):
+        self.device = device
         model = create_module(cfg['model']['function'])(cfg)
         state_dict = torch.load(weight, map_location=self.device)['model_state_dict']
         # state_dict = change_state_dict(state_dict)
@@ -80,8 +80,9 @@ class Detection:
 
 
 class Recognition:
-    def __init__(self, weight, cfg):
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    def __init__(self, weight, cfg, device):
+        # self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = device
         self.img_w = cfg['dataset']['new_shape'][0]
         self.img_h = cfg['dataset']['new_shape'][1]
         self.batch = 16
@@ -153,6 +154,7 @@ class OCR:
     def __init__(self, det_model='DB', reg_model='MASTER',
                  det_config='1ca-ym1bAZTmgPyEL78PRnJ-_Jn1VPT-C', reg_config='1xL_DWV9Yc5qwc9ucVHlYv-xyrrvkOzzL',
                  det_weight='1KWKMiN5iRDtqb1l3FO3o1z6ThxLvfq9a', reg_weight='1V9CGvqC_SsXOEXiNGlRbZxp9fn0qH6Lf'):
+        device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
         assert det_model in ['DB'], '{} model is not implement'.format(det_model)
         assert reg_model in ['MASTER'], '{} model is not implement'.format(reg_model)
         if '.yaml' not in det_config:
@@ -161,7 +163,7 @@ class OCR:
             det_cfg = yaml.safe_load(stream)
         if '.pth' not in det_weight:
             det_weight = download_weights(det_weight)
-        self.detection = Detection(det_weight, det_cfg)
+        self.detection = Detection(det_weight, det_cfg, device)
 
         if '.yaml' not in reg_config:
             reg_config = download_weights(reg_config)
@@ -169,7 +171,7 @@ class OCR:
             reg_cfg = yaml.safe_load(stream)
         if '.pth' not in reg_weight:
             reg_weight = download_weights(reg_weight)
-        self.recognition = Recognition(reg_weight, reg_cfg)
+        self.recognition = Recognition(reg_weight, reg_cfg, device)
           
     def get_result(self, input_image):
         # input_image: PIL image
@@ -187,11 +189,15 @@ class OCR:
             img_pil = Image.fromarray(img_crop.astype('uint8'), 'RGB')
             all_img_pil.append(img_pil)
         result = self.recognition.recognize(all_img_pil)
-        infos = ''
+        infos = dict()
+        infos['boxes'] = boxes_coordinate
+        infos['texts'] = result
+        final_result = ''
         for box, text in zip(boxes_coordinate, result):
             box = list(map(str, box))
             box = ','.join(box)
-            infos += box + ',' + text + '\n'
-        return result
+            final_result += box + ',' + text + '\n'
+        infos['results'] = final_result 
+        return infos
 
 

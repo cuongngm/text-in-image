@@ -153,8 +153,8 @@ class Recognition:
 class OCR:
     def __init__(self, det_model='DB', reg_model='MASTER',
                  det_config='1ca-ym1bAZTmgPyEL78PRnJ-_Jn1VPT-C', reg_config='1xL_DWV9Yc5qwc9ucVHlYv-xyrrvkOzzL',
-                 det_weight='1KWKMiN5iRDtqb1l3FO3o1z6ThxLvfq9a', reg_weight='1V9CGvqC_SsXOEXiNGlRbZxp9fn0qH6Lf'):
-        device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+                 det_weight='1KWKMiN5iRDtqb1l3FO3o1z6ThxLvfq9a', reg_weight='1V9CGvqC_SsXOEXiNGlRbZxp9fn0qH6Lf', device='cpu'):
+        # device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
         assert det_model in ['DB'], '{} model is not implement'.format(det_model)
         assert reg_model in ['MASTER'], '{} model is not implement'.format(reg_model)
         if '.yaml' not in det_config:
